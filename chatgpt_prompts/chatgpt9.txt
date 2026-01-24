@@ -1,0 +1,190 @@
+Overview of Design Science Research Stages
+
+Design Science Research is a problem-solving research methodology that structures inquiry around the design, development, and evaluation of artifacts intended to address identified organizational or technical problems. In applied IT and cybersecurity research, DSR is commonly structured into the following stages.
+
+1. Problem Identification and Motivation
+Purpose
+
+The objective of this stage is to clearly define a relevant, real-world problem and justify why it warrants research attention.
+
+Academic framing
+
+This stage involves:
+
+Identifying a practical challenge encountered in operational environments
+
+Describing the context in which the problem occurs
+
+Explaining the limitations of existing approaches or tools
+
+Example (generic wording)
+
+In complex IT environments, operational and security incidents often manifest through similar system-level signals, creating ambiguity during incident response and leading to delayed or misaligned escalation.
+
+This stage establishes relevance, not solutions.
+
+2. Definition of Objectives for a Solution
+Purpose
+
+To translate the identified problem into explicit design objectives that guide artifact creation.
+
+Academic framing
+
+Rather than hypotheses, DSR defines:
+
+Functional objectives (what the solution should enable)
+
+Quality objectives (clarity, usability, decision support)
+
+Contextual constraints (operational realism, integration feasibility)
+
+Example phrasing
+
+The objective of this research is to design a framework that supports security-aware incident classification by operationalizing reliability metrics in a decision-support context.
+
+These objectives later serve as evaluation criteria.
+
+3. Design and Development of the Artifact
+Purpose
+
+This stage focuses on the creation of the research artifact, which embodies the proposed solution.
+
+Academic framing
+
+Artifacts in DSR may take the form of:
+
+Frameworks
+
+Models
+
+Methods
+
+Decision-support tools
+
+Prototypes
+
+The design process is informed by:
+
+Prior research
+
+Domain knowledge
+
+Practical constraints
+
+Key academic emphasis
+
+Design rationale: why the artifact is structured as it is
+
+Traceability: linking artifact components to problem objectives
+
+Example phrasing
+
+Based on the defined objectives, a reliability-driven decision framework is designed to structure how SRE metrics are interpreted and applied during incident response.
+
+4. Demonstration
+Purpose
+
+To show that the artifact can be used to address the problem in a realistic context.
+
+Academic framing
+
+Demonstration typically involves:
+
+Scenario-based application
+
+Walkthroughs
+
+Simulated or hypothetical use cases
+
+Metric or log replays
+
+This stage answers:
+
+Can the artifact be applied in practice?
+
+Example phrasing
+
+The proposed framework is demonstrated using representative incident scenarios to illustrate how reliability signals can be interpreted to support incident classification and prioritization.
+
+5. Evaluation
+Purpose
+
+To assess how well the artifact meets its objectives.
+
+Academic framing
+
+Evaluation in DSR is:
+
+Contextual rather than universal
+
+Utility-focused rather than theory-driven
+
+Common evaluation approaches include:
+
+Comparative analysis against existing practices
+
+Scenario-based assessment
+
+Expert feedback
+
+Qualitative or semi-quantitative scoring
+
+Example phrasing
+
+The framework is evaluated based on its ability to improve incident classification clarity and response prioritization when compared to traditional reliability-focused incident handling approaches.
+
+Importantly, evaluation focuses on usefulness and decision improvement, not predictive accuracy.
+
+6. Discussion and Reflection
+Purpose
+
+To critically reflect on:
+
+Findings
+
+Trade-offs
+
+Limitations
+
+Applicability
+
+Academic framing
+
+This stage situates the artifact within:
+
+Practical constraints
+
+Organizational realities
+
+Future improvement opportunities
+
+Example phrasing
+
+The discussion highlights the strengths and limitations of the proposed framework, including its dependency on metric quality and the role of human judgment in final incident classification.
+
+7. Contribution to Knowledge
+Purpose
+
+To articulate the research contribution, which in DSR is primarily design knowledge.
+
+Academic framing
+
+Contributions may include:
+
+Novel artifact designs
+
+New ways of operationalizing existing metrics
+
+Practical guidance for practitioners
+
+Bridging previously separate domains (e.g., SRE and security)
+
+Example phrasing
+
+This research contributes a structured framework that bridges Site Reliability Engineering and cybersecurity incident response by demonstrating how reliability metrics can be systematically leveraged for security-aware decision-making.
+
+One-Paragraph Summary (Proposal-Ready)
+
+You can safely use or adapt this:
+
+Design Science Research structures this study around the identification of a practical operational problem, the definition of solution objectives, and the design, demonstration, and evaluation of an artifact intended to address that problem. The artifact, in the form of a decision-support framework, is designed to improve incident classification and prioritization by operationalizing Site Reliability Engineering metrics in a security-aware context. The research emphasizes practical utility and contextual evaluation, aligning with the applied nature of IT and cybersecurity research.

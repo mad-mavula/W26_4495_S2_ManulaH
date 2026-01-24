@@ -1,0 +1,247 @@
+Core SRE Reliability Metrics (Production-Grade)
+4
+1. Service Level Indicators (SLIs)
+
+What they are:
+Quantitative measurements of service behavior from a user or system perspective.
+
+Common SLIs in production:
+
+Request success rate
+
+Request latency
+
+Availability (uptime)
+
+Throughput (requests per second)
+
+Data freshness (for pipelines)
+
+Correctness (e.g., valid responses)
+
+Why they matter:
+SLIs define what “working” means. Everything else in SRE builds on them.
+
+Security relevance:
+Security incidents almost always show up as SLI degradation before they’re labeled as attacks.
+
+2. Service Level Objectives (SLOs)
+
+What they are:
+Target thresholds for SLIs over a defined time window.
+
+Examples:
+
+99.9% of requests succeed over 30 days
+
+p95 latency < 300 ms
+
+API availability ≥ 99.95%
+
+Why they matter:
+SLOs define acceptable risk and reliability boundaries.
+
+Security relevance:
+Sustained or patterned SLO violations often indicate abuse or adversarial activity, not random failure.
+
+3. Error Budgets
+
+What they are:
+The allowed amount of unreliability derived from the SLO.
+
+Example:
+
+99.9% SLO → 0.1% error budget per month
+
+Why they matter:
+Error budgets guide operational decisions and escalation.
+
+Security relevance:
+Attacks consume error budgets. Faster consumption = higher severity.
+
+4. Error Budget Burn Rate
+
+What it is:
+How fast the error budget is being consumed relative to time.
+
+Why it matters:
+Burn rate is one of the most actionable SRE signals in production.
+
+Typical interpretations:
+
+High, sudden burn → major incident
+
+Slow, sustained burn → chronic issue
+
+Localized burn → service-specific problem
+
+Security relevance:
+Burn rate patterns are extremely useful for distinguishing attacks from misconfigurations.
+
+5. Latency Metrics (Especially Tail Latency)
+
+Common forms:
+
+p50 (median)
+
+p95
+
+p99 / p99.9
+
+Why tail latency matters:
+Users don’t experience averages — they experience worst-case delays.
+
+Production reality:
+Most SRE alerts are driven by p95/p99, not mean latency.
+
+Security relevance:
+DoS attacks, resource exhaustion, and abuse often show up first as tail latency inflation.
+
+6. Error Rates
+
+What’s measured:
+
+HTTP 4xx rates
+
+HTTP 5xx rates
+
+Application-level error codes
+
+Dependency failures
+
+Why they matter:
+Error rates directly reflect user impact.
+
+Security relevance:
+
+Auth attacks → spikes in 401/403
+
+Injection attempts → 400-series anomalies
+
+Exploitation → elevated 500s
+
+7. Traffic / Throughput
+
+Common metrics:
+
+Requests per second (RPS)
+
+Concurrent connections
+
+Message volume (queues, streams)
+
+Why they matter:
+They establish baseline behavior.
+
+Security relevance:
+Traffic anomalies are a primary signal for:
+
+DoS
+
+Bot activity
+
+Scraping
+
+Credential stuffing
+
+8. Saturation Metrics (Resource Utilization)
+
+What’s monitored:
+
+CPU utilization
+
+Memory usage
+
+Disk I/O
+
+Network bandwidth
+
+Thread pools / connection pools
+
+Why they matter:
+Saturation indicates proximity to failure.
+
+Security relevance:
+Attacks often aim to push systems into saturation rather than immediate failure.
+
+9. Availability / Uptime
+
+What it measures:
+
+Percentage of time the service is reachable and functional
+
+Production reality:
+Usually derived from:
+
+Health checks
+
+Synthetic probes
+
+User-visible SLIs
+
+Security relevance:
+Availability loss may be the last stage of an attack — not the first.
+
+10. Dependency Health Metrics
+
+What’s tracked:
+
+Downstream service latency
+
+Error propagation
+
+Retry amplification
+
+Circuit breaker activity
+
+Why they matter:
+Modern systems fail through dependencies.
+
+Security relevance:
+Attacks on one service can cascade through dependency chains — a classic blast-radius pattern.
+
+11. The Four Golden Signals (SRE Classic)
+
+Most production systems monitor these explicitly:
+
+Latency
+
+Traffic
+
+Errors
+
+Saturation
+
+Why they matter:
+They cover almost all user-impacting failure modes with minimal metrics.
+
+Security relevance:
+Every major attack affects at least one of these — usually more.
+
+Why These Metrics Are Ideal for Applied Security Research
+
+These metrics are:
+
+Already deployed in production
+
+Continuously collected
+
+Service-aware
+
+Quantitative
+
+Actionable by on-call teams
+
+That makes them perfect for:
+
+Incident classification
+
+Severity scoring
+
+Security-aware prioritization
+
+You’re not inventing new metrics — you’re reinterpreting existing ones, which is exactly what applied research should do.
+
+One Clean Line You Can Use in a Proposal
+
+Modern production systems already monitor a rich set of reliability metrics—including latency, error rates, traffic, saturation, and error budget burn rate—which provide continuous, service-level visibility into system behavior and form a strong foundation for security-aware incident analysis.

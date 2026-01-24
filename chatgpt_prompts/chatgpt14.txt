@@ -1,0 +1,172 @@
+First Principle: What You’re Evaluating (and What You’re Not)
+
+You are not evaluating:
+
+detection accuracy
+
+false positive rates
+
+real-time performance
+
+production reliability
+
+You are evaluating:
+
+decision support quality
+
+interpretability
+
+classification consistency
+
+prioritization usefulness
+
+That framing makes these criteria reasonable.
+
+Core Evaluation Criteria (Proposal-Safe)
+1. Classification Clarity
+
+Question it answers:
+
+Does the framework reduce ambiguity when interpreting incidents?
+
+How to evaluate:
+
+Was the incident classified as operational vs security-driven?
+
+Was the classification supported by explicit reasoning?
+
+Would different evaluators reach similar conclusions?
+
+Scoring example:
+
+Low: unclear or conflicting signals
+
+Medium: partial clarity
+
+High: clear classification with justification
+
+2. Consistency Across Scenarios
+
+Question it answers:
+
+Does the framework behave predictably across different cases?
+
+How to evaluate:
+
+Apply the same logic to multiple scenarios
+
+Observe whether similar patterns produce similar outcomes
+
+Why it matters:
+Consistency builds trust in operational settings.
+
+3. Metric Interpretability
+
+Question it answers:
+
+Are metric correlations understandable to practitioners?
+
+How to evaluate:
+
+Can the decision logic be followed step-by-step?
+
+Are correlations explainable without advanced math?
+
+Applied relevance:
+Black-box reasoning is a liability in incident response.
+
+4. Incident Prioritization Usefulness
+
+Question it answers:
+
+Does the framework help rank incidents by urgency and impact?
+
+How to evaluate:
+
+Does it assign severity or confidence levels?
+
+Does prioritization align with expected operational response?
+
+Example outcomes:
+
+Immediate escalation
+
+Monitor closely
+
+Defer investigation
+
+5. Decision Confidence
+
+Question it answers:
+
+Does the framework increase confidence in response decisions?
+
+How to evaluate:
+
+Are decisions backed by multiple correlated signals?
+
+Is escalation justified rather than reactive?
+
+This is especially important in security contexts.
+
+6. Alignment with Operational Expectations
+
+Question it answers:
+
+Do the outcomes make sense to experienced practitioners?
+
+How to evaluate:
+
+Compare framework output with how incidents are typically handled
+
+Use expert or peer judgment (even informally)
+
+This grounds your work in reality.
+
+Optional (Nice-to-Have) Criteria
+
+These are useful but not mandatory:
+
+7. Scope Sensitivity
+
+Does the framework distinguish localized vs system-wide impact?
+
+8. Escalation Appropriateness
+
+Does it recommend involving security teams only when warranted?
+
+9. Explainability
+
+Can the framework justify why an incident was flagged as security-relevant?
+
+Example Evaluation Table (You Can Use This)
+Criterion	Description	Evidence Source
+Classification clarity	Reduced ambiguity in incident type	Scenario walkthrough
+Metric interpretability	Decision logic understandable	Framework explanation
+Prioritization usefulness	Clear severity ranking	Scenario outcomes
+Consistency	Similar patterns → similar decisions	Cross-scenario analysis
+Operational alignment	Matches expected response	Expert/peer feedback
+
+This kind of table looks very professional in a proposal.
+
+Proposal-Ready Evaluation Paragraph
+
+You can safely use something like this:
+
+The proposed framework is evaluated using simulated incident scenarios based on common operational failures and security-related events. Evaluation focuses on classification clarity, consistency across scenarios, metric interpretability, and the usefulness of incident prioritization. Rather than measuring detection accuracy, the evaluation assesses the framework’s ability to support clear, explainable, and operationally reasonable decision-making under realistic constraints.
+
+One-Line Rule of Thumb
+
+If a criterion measures how well people can make decisions using the framework, it is appropriate for applied evaluation.
+
+Quiet but Important Insight
+
+Reviewers rarely penalize what you evaluate — they penalize:
+
+unclear criteria
+
+mismatched claims
+
+overpromising
+
+You’re doing the opposite: your criteria match your claims perfectly.

@@ -1,0 +1,156 @@
+1. What Makes a Problem “Applied” (and Where You Fit)
+
+Applied research typically:
+
+Solves a real operational problem
+
+Works with imperfect, real-world data
+
+Produces artifacts (frameworks, tools, prototypes)
+
+Aims for practical decision support, not universal proofs
+
+Your problem:
+
+Distinguishing security incidents from operational incidents using SRE metrics
+
+✔ Real operational ambiguity
+✔ Existing teams struggle with this daily
+✔ Uses production-style metrics (latency, error rate, burn rate)
+✔ Naturally leads to a framework or tool
+
+That’s textbook applied research.
+
+2. Why This Is Not Primarily Theoretical
+
+Theoretical research would ask things like:
+
+Can we formally prove classification optimality?
+
+What is the abstract model of adversarial behavior?
+
+Can we derive new mathematical reliability bounds?
+
+Your work does not depend on new theory.
+
+Instead, you’re asking:
+
+How can existing metrics be interpreted differently?
+
+What decision rules help practitioners respond faster?
+
+How does this change real incident handling?
+
+👉 That’s application, synthesis, and validation — not theory creation.
+
+3. Clear Applied Research Artifacts (This Is Key)
+
+Professors love seeing tangible outputs.
+
+Your research naturally produces:
+
+🔹 A Conceptual Framework
+
+Mapping SRE metrics → incident characteristics
+
+Linking reliability behavior to security suspicion
+
+🔹 A Decision Model
+
+Rule-based or heuristic classification
+
+Severity scoring using burn rate and blast radius
+
+🔹 A Prototype Tool (Optional but Powerful)
+
+Web-based dashboard
+
+Visualization of reliability-informed security signals
+
+Decision-support for on-call engineers
+
+🔹 Evaluation Using Scenarios
+
+Simulated incidents (DoS vs config error)
+
+Historical log replay
+
+Comparison of response outcomes
+
+All of these are applied deliverables.
+
+4. Strong Design Science Research (DSR) Fit
+
+If your course mentions Design Science Research, this is almost perfect.
+
+DSR focuses on:
+
+Building artifacts
+
+Solving organizational problems
+
+Evaluating utility, not truth
+
+Your mapping:
+
+Problem: Incident misclassification
+
+Artifact: Reliability-driven decision framework
+
+Environment: Modern cloud-native systems
+
+Evaluation: Case scenarios, expert review, simulations
+
+You can literally say:
+
+This research follows a Design Science Research methodology, focusing on the design, development, and evaluation of an artifact that supports security-aware incident classification using SRE metrics.
+
+That sentence alone makes professors nod.
+
+5. Evaluation Without Heavy Theory (Another Applied Win)
+
+Applied research doesn’t require:
+
+Formal proofs
+
+Perfect datasets
+
+Statistical generalization
+
+You can evaluate via:
+
+Scenario-based analysis
+
+Expert judgment (SRE / security practitioners)
+
+Before/after classification clarity
+
+Reduction in ambiguity or response time
+
+These are practical success criteria, not theoretical ones.
+
+6. How to Explicitly Justify “Applied” in the Proposal
+
+You can say something like:
+
+This research is positioned as applied research because it focuses on addressing a practical operational challenge faced by reliability and security teams, rather than developing new theoretical models. The goal is to design and evaluate a practical framework that can be integrated into existing incident response workflows to improve decision-making and prioritization.
+
+That sentence is safe, clean, and convincing.
+
+7. One-Line Verdict (Use This If Asked Directly)
+
+If someone asks you directly:
+
+Yes. The problem is inherently applied because it addresses a real-world operational decision gap and aims to produce a practical framework or tool that improves incident classification and response in production systems.
+
+8. Quiet Truth (Between Us 😄)
+
+This topic looks sophisticated because it sits between two domains — SRE and security — but that’s actually its strength in applied research:
+
+You’re not inventing new math
+
+You’re connecting things practitioners already use
+
+And solving a pain they feel every week
+
+That’s exactly what applied research is supposed to do.

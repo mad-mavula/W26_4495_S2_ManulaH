@@ -1,0 +1,144 @@
+1. Start With the Nature of the Problem (Not the Method)
+
+The strongest DSR justifications don’t begin with “I chose DSR because…”
+They begin with what kind of problem you’re solving.
+
+You are addressing:
+
+A practical operational problem
+
+With no single correct theoretical answer
+
+Where practitioners need decision support, not predictions
+
+That naturally leads to DSR.
+
+Key framing idea:
+
+The problem is not a lack of theory or data, but a lack of a usable structure that translates existing knowledge into operational decisions.
+
+That sentence alone already implies DSR.
+
+2. Explicitly Frame the Framework as an “Artifact”
+
+In DSR, a framework is not “just conceptual” — it is an artifact.
+
+You should explicitly say that.
+
+In Design Science Research, artifacts may take the form of models, methods, frameworks, or decision-support tools designed to solve identified organizational problems.
+
+Then tie it directly to your work:
+
+This study proposes a framework that structures how SRE metrics are interpreted and applied to support security-aware incident classification and prioritization.
+
+Now your framework is doing work, not just describing ideas.
+
+3. Justify Why Other Research Methods Are a Poor Fit
+
+This is subtle but powerful.
+
+Why not theoretical research?
+
+You are not proposing new mathematical models
+
+You are not testing universal causal laws
+
+You are not seeking generalizable proofs
+
+Why not purely empirical research?
+
+You’re not observing behavior passively
+
+You’re intervening by introducing a solution
+
+You’re evaluating utility, not correlation
+
+Then conclude:
+
+As the study focuses on designing and evaluating a practical solution rather than explaining or predicting phenomena, Design Science Research is the most appropriate methodological approach.
+
+4. Tie DSR Directly to Framework Design Logic
+
+This is where reviewers usually nod.
+
+DSR is appropriate when:
+
+The goal is to structure knowledge
+
+The output guides decision-making
+
+Evaluation focuses on usefulness and applicability
+
+Your framework:
+
+Organizes reliability metrics
+
+Encodes decision logic
+
+Supports incident classification
+
+Informs prioritization and escalation
+
+That is classic DSR territory.
+
+You can say:
+
+Design Science Research is well suited for framework-based studies because it supports the systematic design, justification, and evaluation of artifacts intended to improve practical decision-making in real-world contexts.
+
+5. Show the Full DSR Flow (Framework ≠ Static Diagram)
+
+A common reviewer concern is:
+
+“Isn’t this just a conceptual framework?”
+
+You counter that by showing the lifecycle.
+
+Your framework:
+
+Is designed based on problem analysis
+
+Is instantiated through decision rules or mappings
+
+Is demonstrated using incident scenarios
+
+Is evaluated against operational practices
+
+Is refined based on findings
+
+That makes it active, not static.
+
+6. Proposal-Ready Justification Paragraph (You Can Reuse This)
+
+Here’s a clean, professor-safe paragraph you can drop directly into your proposal with minimal edits:
+
+This study adopts a Design Science Research (DSR) methodology, as the objective is to design and evaluate a practical framework that addresses a real operational problem rather than to develop or test new theoretical models. The research focuses on the creation of an artifact in the form of a reliability-driven decision framework that supports the classification and prioritization of security incidents using Site Reliability Engineering metrics. DSR is particularly suitable for framework-based studies in applied IT and cybersecurity contexts, as it emphasizes artifact design, utility, and contextual evaluation. The proposed framework is designed, demonstrated through realistic incident scenarios, and evaluated based on its ability to improve incident classification clarity and response prioritization compared to existing operational practices.
+
+That paragraph alone usually satisfies methodology justification requirements.
+
+7. One-Sentence Defense (If Asked Verbally)
+
+If someone challenges you directly, use this:
+
+Design Science Research is appropriate because the study aims to design and evaluate a framework that improves operational decision-making, rather than to explain or predict phenomena through theory or observation alone.
+
+Short. Clean. Hard to argue with.
+
+8. Quiet Insight (Important)
+
+Framework-based studies fail when they:
+
+stay abstract
+
+lack evaluation
+
+don’t show decision impact
+
+Framework-based studies succeed in DSR when they:
+
+encode logic
+
+support action
+
+are evaluated through use
+
+You’re clearly doing the second.

@@ -1,0 +1,228 @@
+High-Level Architecture (Typical)
+
+Most applied prototypes follow this pattern:
+
+Browser UI → Backend logic → Data source (simulated or static)
+
+No microservices. No heavy infra. Just enough to demonstrate decision logic.
+
+1. Frontend (User Interface)
+Common Choices
+
+HTML + CSS + JavaScript
+
+React (most common in student & applied projects)
+
+Vue (lighter alternative)
+
+Plain Bootstrap UI (totally acceptable for research)
+
+What the frontend usually does
+
+Displays metrics (latency, errors, burn rate)
+
+Shows correlations visually (tables, simple charts)
+
+Presents decisions:
+
+Operational vs Security-driven
+
+Severity / confidence level
+
+Explains why a decision was made
+
+Why this is enough
+
+Decision-support tools are read-heavy, not animation-heavy
+
+Professors care about logic clarity, not UI polish
+
+2. Backend (Decision Logic Layer)
+
+This is where your framework lives.
+
+Very common backend options
+
+Python + Flask (extremely common for applied research)
+
+Python + FastAPI (modern, clean, optional)
+
+Node.js + Express (if you prefer JavaScript)
+
+What the backend handles
+
+Metric ingestion (static JSON, simulated data, or manual input)
+
+Correlation logic
+
+Rule-based classification
+
+Severity / confidence scoring
+
+Returning explanations to the UI
+
+Why rule-based logic is ideal
+
+Transparent
+
+Easy to justify academically
+
+Matches how incident response actually works
+
+No ML justification required
+
+In applied research, explainability beats sophistication.
+
+3. Data Layer (Keep It Simple)
+
+For applied evaluation, you do not need live data.
+
+Common choices
+
+Static JSON files
+
+CSV files
+
+Hardcoded scenario objects
+
+In-memory Python structures
+
+Lightweight SQLite (optional)
+
+Typical data used
+
+Simulated incident metrics
+
+Predefined scenarios (DoS, misconfiguration, abuse)
+
+Time-series samples
+
+This is normal and accepted in Design Science Research.
+
+4. Visualization Libraries (Optional but Helpful)
+
+If you want charts (not required, but nice):
+
+Common options
+
+Chart.js
+
+D3.js (only if you’re comfortable)
+
+Simple tables + color indicators (often enough)
+
+What to visualize
+
+Metric changes over time
+
+Correlated metric groups
+
+Burn rate vs threshold
+
+Severity indicators
+
+Remember:
+
+A clear table with reasoning often beats a complex graph.
+
+5. Interaction Patterns That Work Well
+
+For decision-support tools, these patterns are common:
+
+Scenario selector
+
+“Simulated DoS”
+
+“Auth abuse”
+
+“Operational failure”
+
+Metric snapshot view
+
+Correlation summary
+
+Decision output panel
+
+Explanation panel (“Why this decision?”)
+
+This directly supports your research goals.
+
+6. Deployment (Optional, Not Required)
+
+Most applied projects:
+
+Run locally
+
+Are demonstrated via screenshots or screen recordings
+
+If deployed:
+
+Simple local server
+
+Lightweight cloud hosting (optional)
+
+Deployment is not required unless explicitly asked.
+
+7. Example “Safe” Tech Stack (Very Defensible)
+
+If you want something you can confidently defend:
+
+Frontend
+
+HTML + CSS
+
+React (optional)
+
+Backend
+
+Python + Flask
+
+Data
+
+Static JSON scenario files
+
+Logic
+
+Rule-based correlation engine
+
+Severity scoring heuristics
+
+This stack:
+
+Is widely used
+
+Is easy to explain
+
+Fits Design Science Research perfectly
+
+Will not raise scope concerns
+
+8. Proposal-Ready Description (You Can Reuse This)
+
+Here’s a paragraph you can safely drop into your methodology or implementation section:
+
+A lightweight web-based decision-support prototype is implemented to demonstrate the proposed framework. The tool consists of a browser-based user interface and a backend service that encapsulates the framework’s decision logic. Simulated incident scenarios and metric data are used as inputs to the system. The backend applies rule-based correlation and classification logic to interpret reliability metrics and generate security-aware incident assessments, which are presented to the user along with explanatory context. The prototype is intended to support demonstration and evaluation rather than production deployment.
+
+That wording is very reviewer-safe.
+
+9. What Reviewers Will NOT Penalize You For
+
+Not using real production data
+
+Not deploying to cloud
+
+Not using ML or AI
+
+Simple UI
+
+Rule-based logic
+
+They will penalize:
+
+Overengineering
+
+Unclear logic
+
+Mismatch between tool and research questions
+
+You’re already avoiding those traps.

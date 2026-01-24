@@ -1,0 +1,147 @@
+1. How DSR Research Questions Differ (Conceptually)
+❌ What DSR questions are not
+
+Avoid questions like:
+
+“Why does X happen?”
+
+“What is the true cause of Y?”
+
+“Is X better than Y in all cases?”
+
+Those are explanatory / theoretical.
+
+✅ What DSR questions are
+
+DSR questions focus on:
+
+How can we design…
+
+What artifacts can support…
+
+To what extent does an artifact help…
+
+How effectively does a solution address…
+
+They are:
+
+Problem-solving
+
+Artifact-oriented
+
+Context-bound
+
+Evaluation-aware
+
+In DSR, the question is not “Is this true?”
+It’s “Does this work well enough to solve the problem?”
+
+2. The Core DSR Question Pattern (Very Useful)
+
+Most strong applied DSR projects follow this structure:
+
+Design question – what are we building?
+
+Implementation question – how is it realized?
+
+Evaluation question – how well does it perform?
+
+Utility question – how useful is it in practice?
+
+You don’t need all four, but 2–3 is ideal.
+
+3. Generic DSR Question Templates (Steal These)
+
+You can safely reuse these patterns:
+
+How can a [framework / model / tool] be designed to address [practical problem] in [context]?
+
+What design principles or metrics are most effective for supporting [decision/task]?
+
+To what extent does the proposed artifact improve [outcome] compared to existing practice?
+
+How effectively can [inputs] be operationalized to support [goal]?
+
+4. Tailored Research Questions for Your Project (Proposal-Ready)
+
+Here’s a clean, applied set you can directly use or lightly tweak.
+
+RQ1 — Design Focus
+
+How can a reliability-driven decision framework be designed to distinguish security-driven incidents from operational incidents in modern distributed systems?
+
+Why this works:
+
+“How can” → design-oriented
+
+“framework” → artifact
+
+“distinguish” → decision problem
+
+Context-specific, not universal
+
+RQ2 — Metric Operationalization
+
+Which Site Reliability Engineering metrics can be operationalized to support the classification and prioritization of security-related incidents during operational disruptions?
+
+Why this works:
+
+Focuses on using existing metrics
+
+Avoids inventing theory
+
+Emphasizes practical operationalization
+
+RQ3 — Evaluation / Utility
+
+To what extent does the proposed framework improve incident classification clarity and response prioritization compared to traditional reliability-only incident handling approaches?
+
+Why this works:
+
+“To what extent” → evaluation, not proof
+
+Compares against real practice
+
+Allows qualitative + scenario-based evaluation
+
+(Optional) RQ4 — Tool Support
+
+If you’re building a dashboard or web interface:
+
+How can a visualization-based decision-support tool enhance practitioners’ ability to interpret reliability signals for security-aware incident response?
+
+This is very applied and very defendable.
+
+5. What to Avoid in Your Question Wording
+
+🚫 Avoid these phrases:
+
+“prove that”
+
+“determine the true cause”
+
+“predict attacks”
+
+“achieve perfect detection”
+
+“universally classify incidents”
+
+Those push you into theoretical or unrealistic territory.
+
+6. Mapping Questions → DSR Outputs (Prof-Friendly)
+
+You can even show alignment like this:
+
+Research Question	DSR Output
+RQ1	Conceptual framework
+RQ2	Metric mapping + decision rules
+RQ3	Evaluation via scenarios
+RQ4	Prototype dashboard
+
+That screams applied.
+
+7. One-Line Rule of Thumb (Memorize This)
+
+If your research question can be answered by building and evaluating something, it’s a Design Science question.
+
+Yours absolutely can.

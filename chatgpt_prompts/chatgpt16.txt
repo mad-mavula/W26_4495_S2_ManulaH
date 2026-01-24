@@ -1,0 +1,57 @@
+Yes — a Python backend + JavaScript dashboard is one of the most appropriate combos for an applied research prototype, especially for a DSR-style “framework + decision-support tool” project.
+
+Here’s why (and how to justify it academically) without overclaiming.
+
+Why it’s appropriate
+
+Fast to prototype and iterate: Python is great for implementing your framework logic (rules, scoring, correlations) quickly and cleanly.
+
+Explainable decision logic: A rule-based engine in Python is easy to document and trace (important for DSR and security-aware decisions).
+
+Clear visualization: JavaScript dashboards (plain JS or React) are well-suited for showing metric snapshots, correlations, and “why this decision” explanations.
+
+Separation of concerns: Backend = decision logic; frontend = presentation. This clean split makes your artifact easier to evaluate and discuss.
+
+Common in applied IT/cyber projects: This is a standard prototype architecture in academic applied work.
+
+What to keep it scoped to (so it stays “prototype”)
+
+Use simulated scenarios / static JSON/CSV inputs
+
+Keep the backend as a REST API (e.g., Flask/FastAPI) that returns:
+
+classification (operational vs security-likely)
+
+severity/confidence score
+
+explanation (which correlated metrics triggered the decision)
+
+Keep the UI focused on:
+
+scenario selection
+
+metrics view
+
+correlation summary
+
+decision + explanation panel
+
+Proposal-ready justification paragraph (you can paste)
+
+A lightweight prototype is implemented using a Python-based backend and a JavaScript-based dashboard to instantiate and demonstrate the proposed framework. Python is used to implement the framework’s correlation, classification, and prioritization logic in a transparent and reproducible manner, while the JavaScript dashboard provides an interactive interface to visualize metric inputs, correlated patterns, and the resulting decision outputs with supporting explanations. This architecture supports rapid iteration and clear separation between decision logic and presentation, aligning with the Design Science Research emphasis on building and evaluating a practical artifact rather than developing a production-grade system.
+
+One small “make it look rigorous” tip
+
+Have the backend return an “evidence object” like:
+
+triggered rules
+
+contributing metrics
+
+time window used
+
+confidence rationale
+
+That makes evaluation and screenshots much more defensible.
+
+If you tell me what you’re leaning toward (Flask vs FastAPI, plain JS vs React), I can suggest a minimal folder structure and the exact API endpoints you’d need.

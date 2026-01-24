@@ -1,0 +1,233 @@
+1. High-Level Shape of a DSR Project
+
+At a bird’s-eye view, DSR follows this loop:
+
+Problem → Design → Build → Evaluate → Reflect
+
+You don’t just study the problem — you intervene in it.
+
+2. Core Sections of a DSR-Based Applied Project
+
+Most applied IT / cybersecurity DSR projects are structured like this (even if the headings differ slightly):
+
+3. Problem Identification & Motivation
+Purpose
+
+Define a real operational problem that practitioners struggle with.
+
+In applied IT / security:
+
+Incident overload
+
+Alert fatigue
+
+Misclassification of incidents
+
+Delayed escalation
+
+Poor prioritization
+
+What reviewers look for
+
+Is this a real problem?
+
+Who experiences it?
+
+Why do existing tools fall short?
+
+Example (your domain)
+
+Operational and security incidents often surface through identical reliability signals, making early classification difficult during incident response.
+
+This anchors your work in practice.
+
+4. Objectives of the Solution (What the Artifact Must Achieve)
+Purpose
+
+Translate the problem into design goals, not hypotheses.
+
+Typical objectives:
+
+Improve decision clarity
+
+Reduce ambiguity
+
+Support prioritization
+
+Fit into existing workflows
+
+In cybersecurity DSR
+
+You don’t say:
+
+“Detect all attacks”
+
+You say:
+
+“Support security-aware incident classification using operational data.”
+
+These objectives later become evaluation criteria.
+
+5. Design & Development (The Artifact)
+
+This is the heart of DSR.
+
+The artifact can be:
+
+A framework
+
+A model
+
+A decision matrix
+
+A methodology
+
+A prototype tool (dashboard, workflow, ruleset)
+
+In applied IT/security projects
+
+Artifacts are often:
+
+Heuristic-based
+
+Metric-driven
+
+Rule-informed (not ML-heavy)
+
+Explainable to practitioners
+
+Example artifacts in your context
+
+Reliability-to-security mapping framework
+
+Decision rules using error budget & burn rate
+
+Service-level blast radius model
+
+Web-based visualization / decision-support tool
+
+What matters is design rationale:
+
+Why these metrics?
+
+Why these thresholds?
+
+Why this structure?
+
+6. Demonstration (Using the Artifact)
+Purpose
+
+Show that the artifact can be used, not just described.
+
+Typical methods:
+
+Walkthroughs
+
+Simulated incidents
+
+Hypothetical but realistic scenarios
+
+Log or metric replays
+
+In cybersecurity DSR
+
+Examples:
+
+DDoS vs misconfiguration scenario
+
+API abuse vs traffic spike
+
+Credential stuffing vs auth bug
+
+You apply your framework/tool and show:
+
+What decision it produces
+
+How it differs from traditional handling
+
+7. Evaluation (Does It Help?)
+
+This is where DSR differs from theory-heavy research.
+
+Evaluation is:
+
+Contextual
+
+Comparative
+
+Utility-focused
+
+Common evaluation methods
+
+Scenario-based comparison (before vs after)
+
+Expert feedback (SREs, security practitioners)
+
+Qualitative scoring (clarity, confidence, priority)
+
+Decision latency or ambiguity reduction
+
+What you don’t need
+
+Large datasets
+
+Statistical significance
+
+Universal generalization
+
+What you do need:
+
+Evidence that the artifact improves decision-making in realistic conditions.
+
+8. Reflection & Discussion
+Purpose
+
+Explain:
+
+What worked
+
+What didn’t
+
+Trade-offs
+
+Limitations
+
+This is where you show research maturity.
+
+In applied cybersecurity:
+
+Acknowledge false positives
+
+Discuss metric sensitivity
+
+Clarify scope boundaries
+
+Explain where human judgment still matters
+
+This section often scores high if done honestly.
+
+9. Contribution (What Knowledge You Added)
+
+In DSR, contributions are design knowledge, not theory.
+
+Examples:
+
+A new way to interpret SRE metrics for security
+
+A decision model bridging SRE and incident response
+
+Practical guidance for integrating reliability and security workflows
+
+This is perfectly valid research contribution in applied IT.
+
+10. How This Maps Cleanly to Your SRE + Security Project
+DSR Step	Your Project
+Problem	Incident misclassification
+Objective	Security-aware decision support
+Artifact	Reliability-driven framework/tool
+Demonstration	Incident scenarios
+Evaluation	Improved clarity & prioritization
+Contribution	Bridging SRE metrics and security decisions
+11. One-Sentence Summary (Use This Freely)
+
+Design Science Research structures applied IT and cybersecurity projects around the design, implementation, and evaluation of practical artifacts that address real operational problems, with success measured by utility and decision improvement rather than theoretical optimality.

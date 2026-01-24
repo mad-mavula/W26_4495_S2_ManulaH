@@ -1,0 +1,154 @@
+1. Reliability “Anomalies” and Security “Signals” Are Often the Same Thing
+
+SRE metrics are designed to detect unexpected deviations from normal behavior.
+Cyber attacks also cause deviations — just with malicious intent.
+
+SRE Signal	Reliability Meaning	Security Interpretation
+Error rate spike	System failing requests	Injection attacks, auth abuse
+Latency (p95/p99) jump	System under stress	DoS, resource exhaustion
+Traffic surge	Increased demand	Bot traffic, brute force
+Saturation increase	Resource limits hit	Cryptomining, lateral movement
+
+👉 Conceptual overlap:
+
+SRE metrics surface “what’s wrong”; security asks “why it’s wrong.”
+
+2. SLIs and SLOs as a Baseline for “Normal” vs “Suspicious”
+
+SRE is obsessive about defining normal behavior.
+
+SLIs → what you measure (latency, error rate, availability)
+
+SLOs → acceptable boundaries of that behavior
+
+From a security perspective:
+
+Anything that systematically violates SLOs without a known deployment or load event becomes suspicious
+
+Repeated micro-violations can indicate slow-burn attacks (credential stuffing, data scraping)
+
+👉 Conceptual overlap:
+
+SLOs act like behavioral guardrails; attackers push systems outside those guardrails.
+
+3. Error Budgets as a Security Impact Lens
+
+Traditionally:
+
+Error budgets tell you how much unreliability you can “spend”
+
+Reframed for security:
+
+A security incident consumes error budget
+
+Faster budget burn = higher severity incident
+
+Examples:
+
+DDoS → rapid error budget burn
+
+Abuse of an API → gradual but persistent burn
+
+Auth endpoint probing → localized burn on specific services
+
+👉 Conceptual overlap:
+
+Security incidents can be prioritized by how fast and how broadly they burn reliability.
+
+4. Burn Rate as an Early-Warning Signal for Attacks
+
+Burn rate answers:
+
+“How fast are we violating reliability guarantees?”
+
+Security translation:
+
+Sudden high burn rate → active attack
+
+Low but sustained burn rate → stealthy abuse
+
+Localized burn rate → targeted exploitation
+
+This is powerful because:
+
+It’s quantitative
+
+It’s service-aware
+
+It aligns with on-call and incident response workflows
+
+👉 Conceptual overlap:
+
+Burn rate turns security detection into a time-based risk problem.
+
+5. Service-Centric Thinking Matches Modern Attack Surfaces
+
+SRE models systems as:
+
+Services
+
+Dependencies
+
+Critical paths
+
+Modern attacks:
+
+Target specific services (auth, payment, APIs)
+
+Exploit dependency chains
+
+Amplify blast radius via shared infrastructure
+
+By mapping:
+
+Security events → affected services
+
+Services → user-facing impact
+
+Impact → SLO degradation
+
+You get security incidents ranked by business impact, not just alerts.
+
+👉 Conceptual overlap:
+
+SRE already models blast radius — security just reuses it.
+
+6. Incident Response Is the Shared Operating Model
+
+Both SRE and security rely on:
+
+Detection
+
+Triage
+
+Severity classification
+
+Post-incident analysis
+
+Key overlap:
+
+SRE incidents = “system is unhealthy”
+
+Security incidents = “system is unhealthy because someone caused it”
+
+SRE metrics give you:
+
+Objective severity signals
+
+Timeline reconstruction
+
+Measurable recovery indicators
+
+👉 Conceptual overlap:
+
+Security incidents are reliability incidents with adversarial root causes.
+
+7. Big Picture (Great One-Liner for Proposals)
+
+If you want a crisp conceptual statement:
+
+SRE metrics quantify system behavior; cybersecurity interprets abnormal behavior through an adversarial lens. When combined, reliability metrics become early indicators and prioritization signals for security incidents.
+
+Or even sharper:
+
+Every meaningful security incident eventually manifests as a reliability problem — the earlier we detect it in SRE metrics, the smaller the blast radius.

@@ -1,0 +1,168 @@
+Reliability Metrics as Behavioral Signals (Security View)
+5
+
+Reliability metrics describe how systems behave.
+Security interpretation asks why that behavior changed.
+
+1. Error Rates → Probing, Abuse, or Exploitation Signals
+Reliability interpretation
+
+Elevated error rates indicate failed requests or service instability
+
+Often attributed to bugs, deployments, or dependency failures
+
+Security interpretation
+
+Error patterns can reflect intentional misuse:
+
+Error Pattern	Possible Security Meaning
+Spike in 401 / 403	Credential stuffing, brute-force auth
+Repeated 400-series errors	Injection probing, malformed payloads
+Rising 500-series errors	Exploit attempts triggering crashes
+Errors isolated to one endpoint	Targeted attack surface
+
+Key insight:
+
+Security incidents often fail loudly before they succeed.
+
+2. Latency (p95 / p99) → Resource Pressure & Attack Stress
+Reliability interpretation
+
+Increased latency suggests performance degradation
+
+Often blamed on load or inefficient code paths
+
+Security interpretation
+
+Latency spikes — especially tail latency — can indicate:
+
+Denial-of-service attempts
+
+Bot traffic overwhelming specific services
+
+Resource exhaustion attacks
+
+Retry amplification caused by malicious traffic
+
+Why tail latency matters
+
+Attacks rarely affect average latency first
+
+They stress the slowest, most fragile paths
+
+Attackers push systems into pathological states, not just high load.
+
+3. Error Budget Burn Rate → Incident Severity Indicator
+Reliability interpretation
+
+Burn rate measures how fast reliability guarantees are being violated
+
+Security interpretation
+
+Burn rate becomes a security severity signal:
+
+Burn Pattern	Security Meaning
+Sudden, fast burn	Active attack
+Slow, persistent burn	Stealthy abuse (scraping, fraud)
+Localized burn	Targeted service exploitation
+
+Security value
+
+Faster burn → higher urgency
+
+Wider burn → larger blast radius
+
+Attacks consume reliability as a side effect.
+
+4. Traffic Volume & Shape → Malicious vs Legitimate Load
+Reliability interpretation
+
+Traffic spikes are often treated as scaling events
+
+Security interpretation
+
+Traffic anomalies can reveal:
+
+Bot-driven requests
+
+Credential stuffing
+
+Scraping
+
+DoS amplification
+
+Security-aware interpretation looks at:
+
+Sudden vs gradual growth
+
+Endpoint concentration
+
+User-agent diversity
+
+Geographic dispersion
+
+Not all traffic is demand — some traffic is pressure.
+
+5. Saturation Metrics → Intentional Resource Exhaustion
+Reliability interpretation
+
+CPU, memory, or network saturation suggests scaling limits
+
+Security interpretation
+
+Saturation can be the attack objective itself:
+
+Cryptomining
+
+Memory exhaustion
+
+Connection pool depletion
+
+Thread starvation
+
+When saturation:
+
+Appears without legitimate traffic growth
+
+Targets specific resources
+
+Correlates with auth or API endpoints
+
+…it becomes a security-relevant signal.
+
+6. Dependency Failures → Indirect Attack Effects
+Reliability interpretation
+
+Cascading failures are dependency issues
+
+Security interpretation
+
+Attacks may:
+
+Exploit upstream services
+
+Trigger retries and amplification
+
+Increase blast radius indirectly
+
+An attack does not need to hit the core service to cause impact.
+
+7. What Changes With a Security Lens (Key Shift)
+Reliability-Only View	Security-Aware View
+“Something broke”	“Something is causing pressure”
+Single-metric alerts	Correlated patterns
+Service health focus	Intent & impact focus
+Reactive recovery	Risk-aware escalation
+8. Proposal-Ready Summary Paragraph
+
+You can safely use something like this:
+
+Reliability metrics such as error rates, latency, traffic volume, and saturation provide continuous visibility into system behavior but are traditionally interpreted only in terms of operational health. When analyzed through a security lens, deviations in these metrics can also indicate adversarial activity, such as probing, abuse, or denial-of-service attempts. Rather than signaling intent directly, reliability metrics reveal behavioral patterns that, when correlated and contextualized, support security-aware incident classification and prioritization.
+
+9. One-Line Insight (Very Strong)
+
+If you want a sharp takeaway:
+
+Reliability metrics do not detect attackers — they expose the pressure attackers create on systems.
+
+That sentence alone explains your entire research angle.

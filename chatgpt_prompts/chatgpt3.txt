@@ -1,0 +1,121 @@
+This is a really strong research angle, by the way — because it’s not theoretical fluff, it’s a real operational pain point in modern infra teams. The trick is to frame it as a decision problem, not a detection problem.
+
+Here’s a clean, applied-research way to position it 👇
+
+Core Problem Framing
+
+Instead of:
+
+“How do we detect security incidents?”
+
+Frame it as:
+
+“How can organizations systematically distinguish between operational failures and security-driven incidents using observable system behavior and reliability signals?”
+
+That subtle shift matters — because you're not replacing SIEMs or IDS tools. You're solving a classification + prioritization problem.
+
+Applied Research Problem Statement (Structured)
+Practical Problem Context
+
+Modern digital systems generate large volumes of incidents triggered by:
+
+infrastructure failures
+
+configuration errors
+
+scaling issues
+
+software bugs
+
+malicious activity
+
+Operationally, these incidents often look identical at the signal level:
+
+latency spikes
+
+error rate increases
+
+service degradation
+
+availability loss
+
+This creates ambiguity in incident response pipelines:
+
+Teams respond reactively, not diagnostically
+
+Security teams get alerted too late
+
+Operational teams treat attacks as reliability bugs
+
+Incident prioritization is misaligned with real risk
+
+Research Gap Framing
+
+You can frame the gap like this:
+
+Existing incident detection systems focus either on operational reliability (SRE tooling) or security detection (SIEM/SOC tooling), but there is limited integration between the two at the decision-making layer — where incidents are classified, prioritized, and escalated.
+
+Or more applied:
+
+There is currently no unified operational framework that uses reliability metrics as structured inputs for distinguishing between accidental system failures and adversarial security events in real time.
+
+Decision-Oriented Framing (Very Strong for Applied Research)
+
+This is gold for professors and applied projects:
+
+The core problem is not the absence of data, but the absence of a decision model that interprets system reliability signals in a way that supports security-aware incident classification and prioritization.
+
+So you’re not building “another detection system” — you’re building:
+👉 a decision-support framework
+
+Example Problem Statement Paragraph (Proposal-Ready)
+
+Here’s a clean paragraph you can drop into an applied proposal:
+
+In modern distributed systems, operational incidents and security incidents often manifest through identical system-level signals such as increased latency, elevated error rates, service degradation, and resource saturation. As a result, incident response teams face a fundamental classification challenge: determining whether observed system instability is caused by internal operational failure or external adversarial activity. Current reliability engineering tools are optimized for service health and availability, while security monitoring systems operate largely in parallel, leading to fragmented situational awareness and delayed security escalation. This creates a critical gap in incident management where security-driven events may initially be treated as routine operational failures, increasing response time, blast radius, and organizational risk. This research addresses the absence of an integrated, reliability-informed decision framework for distinguishing and prioritizing security incidents within operational incident response workflows.
+
+Research Framing in One Line (High-Impact)
+
+If you want something sharp and quotable:
+
+The challenge is not detecting incidents, but distinguishing intent — failure versus attack — using the same observable system signals.
+
+or
+
+Modern systems detect failures well, but they do not interpret causality well.
+
+Applied Research Angle (Important for credibility)
+
+To keep it “applied” (not theoretical):
+
+You frame your work as:
+
+Not replacing SOC tools
+
+Not replacing SIEM
+
+Not replacing SRE platforms
+
+Not doing ML-first detection
+
+But instead:
+
+Building a practical classification and prioritization layer that sits between monitoring systems and incident response teams.
+
+Conceptual Model Framing
+
+You can describe your system like this:
+
+Signals → Interpretation → Classification → Prioritization → Response
+
+Where:
+
+Signals = SRE metrics
+
+Interpretation = reliability patterns
+
+Classification = operational vs security-driven
+
+Prioritization = impact + burn rate + blast radius
+
+Response = escalation path (SRE vs SOC)

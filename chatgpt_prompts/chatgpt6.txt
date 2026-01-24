@@ -1,0 +1,169 @@
+1. What “Clear and Measurable” Means in Applied SRE Research
+
+In applied / DSR work, measurable does not mean:
+
+statistically generalizable
+
+mathematically provable
+
+universally optimal
+
+It does mean:
+
+observable in practice
+
+evaluable via scenarios, metrics, or expert judgment
+
+tied to concrete artifacts or decisions
+
+Your questions meet those criteria.
+
+2. Let’s Stress-Test Each Research Question
+RQ1 — Design Clarity
+
+How can a reliability-driven decision framework be designed to distinguish security-driven incidents from operational incidents in modern distributed systems?
+
+Clarity: ✅
+
+Clear “how can” → design
+
+Clear artifact → decision framework
+
+Clear distinction → security vs operational
+
+Measurability: ✅
+
+You can show the framework
+
+You can apply it to incident scenarios
+
+You can demonstrate classification outcomes
+
+How it’s evaluated in practice:
+
+Does the framework exist?
+
+Can it be applied consistently?
+
+Does it produce a classification decision?
+
+💡 This is measured by existence, applicability, and internal consistency — which is exactly right for DSR.
+
+RQ2 — Metric Operationalization
+
+Which Site Reliability Engineering metrics can be operationalized to support the classification and prioritization of security-related incidents during operational disruptions?
+
+Clarity: ✅
+
+“Which metrics” is concrete
+
+“Operationalized” implies rules or mappings
+
+“Classification and prioritization” defines the output
+
+Measurability: ✅
+
+You can list metrics
+
+You can define thresholds, patterns, or heuristics
+
+You can demonstrate how they affect decisions
+
+How it’s evaluated in practice:
+
+Are metrics explicitly defined?
+
+Are decision rules documented?
+
+Do different incidents map to different severities?
+
+RQ3 — Evaluation & Utility
+
+To what extent does the proposed framework improve incident classification clarity and response prioritization compared to traditional reliability-only incident handling approaches?
+
+Clarity: ✅
+
+Clear comparison baseline
+
+Clear outcome (clarity & prioritization)
+
+Measurability: ✅ (for applied research)
+
+Before vs after comparison
+
+Scenario-based evaluation
+
+Expert feedback
+
+Reduced ambiguity or faster escalation
+
+Typical evaluation methods:
+
+Incident scenarios (DoS vs misconfig)
+
+Qualitative scoring (low/medium/high clarity)
+
+Practitioner feedback
+
+Decision latency comparison
+
+💡 “To what extent” gives you flexibility — that’s good, not weak.
+
+3. Why These Are Perfect for an SRE-Focused Security Study
+
+They:
+
+Start from reliability signals, not threat intel
+
+Fit on-call / incident response workflows
+
+Avoid promising detection accuracy
+
+Focus on decision quality, not prediction
+
+That aligns with:
+
+SRE principles
+
+Operational reality
+
+Applied research expectations
+
+4. Minor Refinements (Optional but Nice)
+
+If you want them slightly tighter academically, here are safe tweaks:
+
+Polished Version (Optional)
+
+RQ1
+
+How can a reliability-driven decision framework be designed to support the classification of security-driven versus operational incidents in distributed systems?
+
+RQ2
+
+Which SRE metrics and reliability indicators can be operationalized to inform the classification and prioritization of security-related incidents?
+
+RQ3
+
+To what extent does the proposed framework improve incident classification clarity and response prioritization when compared with reliability-only incident handling practices?
+
+These don’t change meaning — they just sound extra clean.
+
+5. Quick Professor-Defense Answer (Memorize This)
+
+If asked “Are these measurable?” you can say:
+
+Yes. Each research question is evaluated through the design and application of a concrete artifact, supported by scenario-based analysis and comparative evaluation against existing operational practices. The focus is on practical decision improvement rather than theoretical optimality.
+
+That answer lands well.
+
+6. Verdict
+
+✔ Clear
+✔ Scoped
+✔ Evaluatable
+✔ Applied
+✔ SRE-aligned
+✔ Security-relevant
+
+You’re not over-claiming, and you’re not under-specifying — that’s exactly where good applied research lives.

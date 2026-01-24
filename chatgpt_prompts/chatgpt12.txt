@@ -1,0 +1,172 @@
+Why Single Metrics Are Insufficient
+
+A spike in one metric can mean many things:
+
+Latency ↑ → bug, load, attack, dependency issue
+
+Errors ↑ → bad deploy, client misuse, probing
+
+Traffic ↑ → product launch, bot activity, DoS
+
+Correlation answers the missing question: “What else changed at the same time?”
+
+Correlation as Pattern Recognition (Not Math-Heavy)
+4
+
+In applied SRE and security contexts, correlation usually means:
+
+Temporal alignment (metrics change together)
+
+Directional consistency (how they move)
+
+Scope overlap (which services/endpoints)
+
+Persistence (how long the pattern lasts)
+
+This is interpretive correlation, not statistical modeling — which is perfect for Design Science Research.
+
+Core Correlation Dimensions (Proposal-Ready)
+1. Temporal Correlation (When)
+
+Do multiple metrics change at the same time?
+
+Examples:
+
+Latency ↑ + errors ↑ at the same minute
+
+Burn rate spikes immediately after traffic surge
+
+Saturation rises shortly after auth errors spike
+
+Security insight:
+Attacks often create tight temporal coupling across metrics.
+
+2. Metric-Type Correlation (What)
+
+Which classes of metrics are involved?
+
+Metric Combination	Interpretation
+Latency + Errors	Service stress
+Traffic + Saturation	Load or pressure
+Errors + Auth failures	Abuse or probing
+Burn rate + p99 latency	High-severity impact
+
+Key idea:
+
+Security-relevant incidents usually affect multiple signal types, not just one.
+
+3. Scope Correlation (Where)
+
+Which services, endpoints, or dependencies are affected?
+
+Examples:
+
+Only /login endpoint shows errors
+
+Only API gateway latency degrades
+
+One downstream dependency saturates
+
+Security insight:
+Operational failures tend to be broad; attacks are often focused.
+
+4. Persistence Correlation (How long)
+
+Is the behavior short-lived or sustained?
+
+Pattern	Likely Meaning
+Short spike, fast recovery	Transient failure
+Sustained low-level degradation	Stealthy abuse
+Rapid sustained degradation	Active attack
+
+Attacks are often persistent by design.
+
+Example: Correlation in Practice
+Scenario A — Operational Failure
+
+Latency ↑
+
+Errors ↑
+
+Traffic = normal
+
+Saturation ↑ gradually
+
+Burn rate ↑ briefly
+
+Interpretation:
+Likely misconfiguration or capacity issue.
+
+Scenario B — Security-Driven Incident
+
+Traffic ↑ sharply
+
+p99 latency ↑
+
+Auth errors (401/403) ↑
+
+CPU & connection pool saturation ↑
+
+Error budget burn rate ↑ rapidly
+
+Interpretation:
+High confidence of malicious activity (e.g., credential stuffing or DoS).
+
+From Metrics → Correlation Rules (Applied & Explainable)
+
+Instead of thresholds like:
+
+“Alert if latency > X”
+
+You define correlation rules such as:
+
+Latency ↑ AND traffic ↑ AND saturation ↑
+
+Error rate ↑ AND endpoint scope is narrow
+
+Burn rate ↑ AND no recent deployment
+
+These rules are:
+
+Transparent
+
+Explainable
+
+Easy to justify academically
+
+Aligned with how on-call teams think
+
+Why Correlation Matters for Security Classification
+Isolated Metrics	Correlated Metrics
+High false positives	Higher confidence
+Reactive	Context-aware
+Ambiguous	Interpretable
+Symptom-focused	Cause-indicative
+
+Correlation turns:
+
+“The system is unhealthy”
+into
+“The system is unhealthy in a way consistent with adversarial pressure.”
+
+Proposal-Ready Explanation Paragraph
+
+You can use something like this verbatim:
+
+Rather than analyzing reliability metrics in isolation, this study emphasizes the correlation of multiple metrics across time, scope, and signal type. By examining how latency, error rates, traffic, saturation, and error budget burn rate co-vary during incidents, the framework identifies behavioral patterns that are more indicative of security-driven activity than single-metric deviations. This correlation-based interpretation supports more confident incident classification and reduces ambiguity during operational response.
+
+One-Line Insight (Strong & Defensible)
+
+Single metrics indicate symptoms; correlated metrics reveal behavior.
+
+What This Enables in Your Research
+
+Correlation allows you to:
+
+Define security-likely vs operational-likely patterns
+
+Rank incidents by confidence and severity
+
+Justify decisions without threat intel
+
+Stay fully within applied SRE practice
