@@ -1,4 +1,5 @@
-An-SRE-Driven-Framework-for-Detecting-and-Prioritizing-Security-Incidents-Using-Reliability-Metrics
-Manula Manjitha Hindurangala
-300390724
-hindurangalam@student.douglascollege.ca
+## Repository Structure
+
+- Implementation/ — Source code and experiments
+- ReportsAndDocuments/ — Proposal, scope, and formal documents
+- Misc/ — ChatGPT logs and supporting material
