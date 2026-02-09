@@ -1,0 +1,44 @@
+[
+    {
+        "id": "dos-attack",
+        "name": "Layer 7 DDoS Attack",
+        "type": "security",
+        "metrics": {
+            "latency_p99": 1500,
+            "error_rate": 0.35,
+            "request_rate": 5200,
+            "cpu_utilization": 0.92,
+            "memory_utilization": 0.85,
+            "network_in": 450,
+            "network_out": 380
+        },
+        "description": "Simulated HTTP flood attack causing resource exhaustion"
+    },
+    {
+        "id": "brute-force",
+        "name": "Credential Brute Force Attack",
+        "type": "security",
+        "metrics": {
+            "latency_p99": 420,
+            "error_rate": 0.45,
+            "request_rate": 1800,
+            "auth_failures": 1250,
+            "unique_ips": 220,
+            "success_rate": 0.02
+        },
+        "description": "Multiple failed login attempts from diverse IPs"
+    },
+    {
+        "id": "config-error",
+        "name": "Configuration Error",
+        "type": "operational",
+        "metrics": {
+            "latency_p99": 820,
+            "error_rate": 0.22,
+            "request_rate": 950,
+            "cpu_utilization": 0.48,
+            "memory_utilization": 0.52
+        },
+        "description": "Recent configuration change causing degradation"
+    }
+]
