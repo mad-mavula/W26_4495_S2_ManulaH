@@ -24,6 +24,10 @@ def health():
 def metrics():
     return generate_latest(REGISTRY), 200, {'Content-Type': 'text/plain'}
 
+@app.route('/metrics', methods=['GET'])
+def metrics_alt():
+    return generate_latest(REGISTRY), 200, {'Content-Type': 'text/plain'}
+
 @app.route('/api/scenarios', methods=['GET'])
 def get_scenarios():
     REQUEST_COUNT.labels(method='GET', endpoint='/scenarios', status='200').inc()

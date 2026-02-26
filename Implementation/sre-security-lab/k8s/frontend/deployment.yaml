@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sre-frontend
+  labels:
+    app: sre-frontend
+    component: frontend
+    research: sre-security
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sre-frontend
+  template:
+    metadata:
+      labels:
+        app: sre-frontend
+        component: frontend
+        research: sre-security
+    spec:
+      containers:
+        - name: frontend
+          image: sre-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: REACT_APP_API_URL
+              value: "http://sre-backend-service"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
