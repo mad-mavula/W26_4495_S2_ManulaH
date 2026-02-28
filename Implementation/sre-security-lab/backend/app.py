@@ -4,7 +4,164 @@ from prometheus_client import generate_latest, Counter, Histogram, REGISTRY
 import json
 import time
 import numpy as np
+import requests
+import os
+import threading
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
+# ============================================
+# BASELINE CALCULATOR CLASS
+# ============================================
+
+class BaselineCalculator:
+    """
+    Calculates and stores baseline metrics for normal system behavior.
+    Runs in background, collects data every hour, updates baseline file.
+    """
+    
+    def __init__(self, prometheus_url: str = "http://monitoring-kube-prometheus-prometheus.monitoring:9090"):
+        self.prometheus_url = prometheus_url
+        self.baseline_file = "/app/data/baseline.json"
+        self.is_running = False
+        self.thread = None
+        
+    def query_prometheus(self, query: str) -> Optional[float]:
+        """Execute a Prometheus query and return the average value"""
+        try:
+            response = requests.get(
+                f"{self.prometheus_url}/api/v1/query",
+                params={"query": query},
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data['data']['result']:
+                    value = float(data['data']['result'][0]['value'][1])
+                    return value
+            return None
+        except Exception as e:
+            print(f"Error querying Prometheus: {e}")
+            return None
+    
+    def collect_current_metrics(self) -> Dict:
+        """Collect current metrics from Prometheus"""
+        metrics = {}
+        
+        queries = {
+            'request_rate': 'sum(rate(http_requests_total[5m]))',
+            'error_rate': 'sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100',
+            'latency_p95': 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
+            'latency_p99': 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
+            'cpu_usage': 'sum(rate(process_cpu_seconds_total[5m]))',
+            'memory_usage': 'sum(process_resident_memory_bytes)',
+            'auth_failures': 'sum(rate(http_requests_total{status="401"}[5m]))',
+        }
+        
+        for name, query in queries.items():
+            value = self.query_prometheus(query)
+            if value is not None:
+                metrics[name] = value
+            else:
+                metrics[name] = 0.0
+                
+        return metrics
+    
+    def calculate_baseline(self, samples: List[Dict]) -> Dict:
+        """Calculate baseline statistics from collected samples"""
+        if not samples:
+            return {}
+        
+        baseline = {}
+        metrics_keys = samples[0].keys()
+        
+        for key in metrics_keys:
+            values = [sample[key] for sample in samples if key in sample]
+            if values:
+                baseline[key] = {
+                    'mean': sum(values) / len(values),
+                    'min': min(values),
+                    'max': max(values),
+                    'std_dev': (sum((x - (sum(values) / len(values))) ** 2 for x in values) / len(values)) ** 0.5 if len(values) > 1 else 0,
+                    'samples': len(values)
+                }
+        
+        return baseline
+    
+    def collect_baseline_data(self, duration_minutes: int = 60) -> List[Dict]:
+        """Collect metrics over a period of time for baseline calculation"""
+        print(f"Collecting baseline data for {duration_minutes} minutes...")
+        samples = []
+        end_time = time.time() + (duration_minutes * 60)
+        
+        while time.time() < end_time:
+            metrics = self.collect_current_metrics()
+            metrics['timestamp'] = time.time()
+            samples.append(metrics)
+            print(f"  Collected sample {len(samples)}")
+            time.sleep(60)
+            
+        return samples
+    
+    def save_baseline(self, baseline: Dict):
+        """Save baseline to file"""
+        os.makedirs(os.path.dirname(self.baseline_file), exist_ok=True)
+        
+        baseline_data = {
+            'timestamp': time.time(),
+            'baseline': baseline,
+            'metadata': {
+                'version': '1.0',
+                'description': 'SRE Security Research Baseline'
+            }
+        }
+        
+        with open(self.baseline_file, 'w') as f:
+            json.dump(baseline_data, f, indent=2)
+        
+        print(f"Baseline saved to {self.baseline_file}")
+    
+    def load_baseline(self) -> Optional[Dict]:
+        """Load baseline from file"""
+        if os.path.exists(self.baseline_file):
+            with open(self.baseline_file, 'r') as f:
+                data = json.load(f)
+                return data.get('baseline', {})
+        return None
+    
+    def get_current_deviation(self, current_metrics: Dict) -> Dict:
+        """Calculate deviation of current metrics from baseline"""
+        baseline = self.load_baseline()
+        if not baseline:
+            return {}
+        
+        deviations = {}
+        for metric, value in current_metrics.items():
+            if metric in baseline:
+                b = baseline[metric]
+                if b['mean'] != 0:
+                    deviation_pct = ((value - b['mean']) / b['mean']) * 100
+                    deviations[metric] = {
+                        'current': value,
+                        'baseline_mean': b['mean'],
+                        'deviation_percent': deviation_pct,
+                        'is_anomaly': abs(deviation_pct) > (b['std_dev'] * 3) if b['std_dev'] > 0 else abs(deviation_pct) > 50
+                    }
+        
+        return deviations
+
+# Create singleton instance
+baseline_calculator = BaselineCalculator()
+
+# Load baseline on startup
+try:
+    baseline = baseline_calculator.load_baseline()
+    if baseline:
+        print("✅ Baseline loaded successfully")
+    else:
+        print("⚠️ No baseline found. Run baseline collection first")
+except Exception as e:
+    print(f"⚠️ Error loading baseline: {e}")
 app = Flask(__name__)
 CORS(app)
 
@@ -58,6 +215,104 @@ def simulate_scenario(scenario_id):
             }
         }
         return jsonify(result)
+@app.route('/api/realtime-metrics/<scenario_id>', methods=['GET'])
+def realtime_metrics(scenario_id):
+    """Fetch real metrics from Prometheus for the given scenario"""
+    
+    # Prometheus service URL inside the cluster
+    PROMETHEUS_URL = "http://monitoring-kube-prometheus-prometheus.monitoring:9090"
+    
+    # Define queries for each scenario
+    queries = {
+        "dos-attack": {
+            "request_rate": 'sum(rate(http_requests_total[1m]))',
+            "cpu_usage": 'sum(rate(process_cpu_seconds_total[1m]))',
+            "memory_usage": 'sum(process_resident_memory_bytes)',
+            "error_rate": 'sum(rate(http_requests_total{status=~"5.."}[1m])) / sum(rate(http_requests_total[1m])) * 100'
+        },
+        "brute-force": {
+            "request_rate": 'sum(rate(http_requests_total{method="POST"}[1m]))',
+            "auth_failures": 'sum(rate(http_requests_total{status="401"}[1m]))',
+            "success_rate": 'sum(rate(http_requests_total{status="200", method="POST"}[1m])) / sum(rate(http_requests_total{method="POST"}[1m])) * 100'
+        },
+        "config-error": {
+            "request_rate": 'sum(rate(http_requests_total[1m]))',
+            "error_rate": 'sum(rate(http_requests_total{status="500"}[1m])) / sum(rate(http_requests_total[1m])) * 100',
+            "cpu_usage": 'sum(rate(process_cpu_seconds_total[1m]))'
+        }
+    }
+    
+    if scenario_id not in queries:
+        return jsonify({"error": "Scenario not found"}), 404
+    
+    results = {}
+    for metric_name, query in queries[scenario_id].items():
+        try:
+            response = requests.get(
+                f"{PROMETHEUS_URL}/api/v1/query",
+                params={"query": query},
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data['data']['result']:
+                    # Extract the value from Prometheus response
+                    value = data['data']['result'][0]['value'][1]
+                    results[metric_name] = float(value)
+                else:
+                    results[metric_name] = 0
+            else:
+                results[metric_name] = 0
+        except Exception as e:
+            print(f"Error fetching {metric_name}: {e}")
+            results[metric_name] = 0
+    
+    # Add analysis based on real metrics
+    risk_level = "low"
+    if scenario_id in ["dos-attack", "brute-force"]:
+        if results.get('request_rate', 0) > 10:
+            risk_level = "high"
+        elif results.get('request_rate', 0) > 5:
+            risk_level = "medium"
+    
+    return jsonify({
+        "scenario": scenario_id,
+        "type": "security" if scenario_id in ["dos-attack", "brute-force"] else "operational",
+        "metrics": results,
+        "simulation_id": f"real_{int(time.time())}",
+        "timestamp": time.time(),
+        "analysis": {
+            "risk_level": risk_level,
+            "recommendations": [
+                "Check Grafana dashboard for detailed metrics",
+                "Monitor resource usage",
+                "Review logs for anomalies"
+            ]
+        }
+    })
+
+@app.route('/api/status', methods=['GET'])
+def get_current_status():
+    """Get current system status with deviation from baseline"""
+    current_metrics = baseline_calculator.collect_current_metrics()
+    deviations = baseline_calculator.get_current_deviation(current_metrics)
+    
+    # Check if any anomaly is detected
+    anomalies = {}
+    for metric, data in deviations.items():
+        if data.get('is_anomaly', False):
+            anomalies[metric] = data
+    
+    status = {
+        'timestamp': time.time(),
+        'has_baseline': baseline_calculator.load_baseline() is not None,
+        'current_metrics': current_metrics,
+        'deviations': deviations,
+        'anomalies_detected': len(anomalies) > 0,
+        'anomalies': anomalies
+    }
+    
+    return jsonify(status)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
