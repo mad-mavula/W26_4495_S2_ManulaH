@@ -15,6 +15,10 @@ COPY . .
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+
+# Create data directory for baseline storage
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
+
 USER appuser
 
 # Expose port
