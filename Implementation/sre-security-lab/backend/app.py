@@ -150,18 +150,211 @@ class BaselineCalculator:
         
         return deviations
 
-# Create singleton instance
+# ============================================
+# ANOMALY DETECTOR CLASS
+# ============================================
+
+class AnomalyDetector:
+    """
+    Continuously monitors metrics and triggers classification
+    when anomalies are detected.
+    """
+    
+    def __init__(self, check_interval: int = 15):
+        """
+        Initialize the anomaly detector.
+        
+        Args:
+            check_interval: Seconds between metric checks (default: 15)
+        """
+        self.check_interval = check_interval
+        self.baseline_calc = None  # Will be set later
+        self.is_running = False
+        self.thread = None
+        self.callback = None
+        self.anomaly_history = []
+        self.current_anomaly = None
+        self.anomaly_start_time = None
+        self.consecutive_anomalies = 0
+        self.anomaly_threshold = 2  # Need 2 consecutive checks to confirm
+        
+        # Anomaly sensitivity thresholds (percentage deviation)
+        self.sensitivity = {
+            'request_rate': 50,    # 50% deviation
+            'error_rate': 100,      # 100% deviation (2x)
+            'latency_p95': 100,     # 100% deviation
+            'latency_p99': 100,     # 100% deviation
+            'cpu_usage': 30,        # 30% deviation
+            'memory_usage': 20,      # 20% deviation
+            'auth_failures': 200     # 200% deviation (3x)
+        }
+        
+    def set_baseline_calculator(self, baseline_calc):
+        """Set the baseline calculator instance"""
+        self.baseline_calc = baseline_calc
+        
+    def set_callback(self, callback_function):
+        """
+        Set the function to call when anomaly is confirmed.
+        This will be your classification engine.
+        """
+        self.callback = callback_function
+        
+    def check_metrics(self) -> Dict:
+        """
+        Check current metrics against baseline.
+        Returns anomaly info if detected.
+        """
+        if not self.baseline_calc:
+            return {'anomaly_count': 0, 'anomalous_metrics': {}}
+            
+        current_metrics = self.baseline_calc.collect_current_metrics()
+        deviations = self.baseline_calc.get_current_deviation(current_metrics)
+        
+        # Find which metrics are anomalous based on sensitivity
+        anomalous_metrics = {}
+        for metric, data in deviations.items():
+            if data and 'deviation_percent' in data:
+                dev_pct = abs(data['deviation_percent'])
+                sensitivity = self.sensitivity.get(metric, 50)
+                
+                if dev_pct > sensitivity:
+                    anomalous_metrics[metric] = {
+                        'deviation': data['deviation_percent'],
+                        'current': data['current'],
+                        'baseline': data['baseline_mean']
+                    }
+        
+        return {
+            'timestamp': time.time(),
+            'all_metrics': current_metrics,
+            'deviations': deviations,
+            'anomalous_metrics': anomalous_metrics,
+            'anomaly_count': len(anomalous_metrics)
+        }
+    
+    def detect_anomalies(self) -> Optional[Dict]:
+        """
+        Run one detection cycle. Returns anomaly info if confirmed.
+        """
+        result = self.check_metrics()
+        
+        if result['anomaly_count'] > 0:
+            self.consecutive_anomalies += 1
+            
+            if self.current_anomaly is None:
+                # New anomaly starting
+                self.current_anomaly = {
+                    'start_time': time.time(),
+                    'metrics': result['anomalous_metrics'],
+                    'all_metrics': result['all_metrics'],
+                    'deviations': result['deviations']
+                }
+                self.anomaly_start_time = time.time()
+            
+            # Check if anomaly is confirmed (consecutive detections)
+            if self.consecutive_anomalies >= self.anomaly_threshold:
+                confirmed_anomaly = {
+                    'id': f"anomaly_{int(time.time())}",
+                    'start_time': self.anomaly_start_time,
+                    'detected_time': time.time(),
+                    'duration': time.time() - self.anomaly_start_time,
+                    'metrics': result['anomalous_metrics'],
+                    'all_metrics': result['all_metrics'],
+                    'deviations': result['deviations'],
+                    'anomaly_count': result['anomaly_count']
+                }
+                
+                # Add to history
+                self.anomaly_history.append(confirmed_anomaly)
+                
+                # Keep history manageable (last 100)
+                if len(self.anomaly_history) > 100:
+                    self.anomaly_history = self.anomaly_history[-100:]
+                
+                return confirmed_anomaly
+        else:
+            # No anomalies detected
+            self.consecutive_anomalies = 0
+            self.current_anomaly = None
+            self.anomaly_start_time = None
+            
+        return None
+    
+    def monitoring_loop(self):
+        """Main monitoring loop running in background thread"""
+        print(f"🚀 Anomaly detector started (checking every {self.check_interval}s)")
+        
+        while self.is_running:
+            try:
+                anomaly = self.detect_anomalies()
+                
+                if anomaly and self.callback:
+                    # Trigger the classification engine
+                    print(f"⚠️ Anomaly detected! Triggering classification...")
+                    self.callback(anomaly)
+                elif anomaly:
+                    print(f"⚠️ Anomaly detected: {anomaly['anomaly_count']} metrics affected")
+                
+            except Exception as e:
+                print(f"Error in anomaly detection: {e}")
+            
+            # Wait for next check
+            time.sleep(self.check_interval)
+    
+    def start(self):
+        """Start the anomaly detector in background thread"""
+        if not self.baseline_calc or not self.baseline_calc.load_baseline():
+            print("❌ Cannot start anomaly detector: No baseline found!")
+            print("   Please run baseline collection first.")
+            return False
+        
+        self.is_running = True
+        self.thread = threading.Thread(target=self.monitoring_loop)
+        self.thread.daemon = True
+        self.thread.start()
+        print(f"✅ Anomaly detector running (interval: {self.check_interval}s)")
+        return True
+    
+    def stop(self):
+        """Stop the anomaly detector"""
+        self.is_running = False
+        if self.thread:
+            self.thread.join(timeout=5)
+        print("🛑 Anomaly detector stopped")
+    
+    def get_status(self) -> Dict:
+        """Get current detector status"""
+        return {
+            'is_running': self.is_running,
+            'check_interval': self.check_interval,
+            'consecutive_anomalies': self.consecutive_anomalies,
+            'has_baseline': self.baseline_calc.load_baseline() is not None if self.baseline_calc else False,
+            'current_anomaly': self.current_anomaly,
+            'recent_history': self.anomaly_history[-5:] if self.anomaly_history else []
+        }
+    
+    def get_anomaly_history(self, limit: int = 10) -> List[Dict]:
+        """Get recent anomaly history"""
+        return self.anomaly_history[-limit:] if self.anomaly_history else []
+
+# Create singleton instances
 baseline_calculator = BaselineCalculator()
+anomaly_detector = AnomalyDetector()
+anomaly_detector.set_baseline_calculator(baseline_calculator)
 
 # Load baseline on startup
 try:
     baseline = baseline_calculator.load_baseline()
     if baseline:
         print("✅ Baseline loaded successfully")
+        # Auto-start anomaly detector if baseline exists
+        anomaly_detector.start()
     else:
         print("⚠️ No baseline found. Run baseline collection first")
 except Exception as e:
     print(f"⚠️ Error loading baseline: {e}")
+
 app = Flask(__name__)
 CORS(app)
 
@@ -215,6 +408,7 @@ def simulate_scenario(scenario_id):
             }
         }
         return jsonify(result)
+
 @app.route('/api/realtime-metrics/<scenario_id>', methods=['GET'])
 def realtime_metrics(scenario_id):
     """Fetch real metrics from Prometheus for the given scenario"""
@@ -313,6 +507,33 @@ def get_current_status():
     }
     
     return jsonify(status)
+
+# NEW: Anomaly Detector Status Endpoint
+@app.route('/api/detector/status', methods=['GET'])
+def detector_status():
+    """Get anomaly detector status"""
+    return jsonify(anomaly_detector.get_status())
+
+# NEW: Anomaly Detector History Endpoint
+@app.route('/api/detector/history', methods=['GET'])
+def detector_history():
+    """Get anomaly history"""
+    limit = request.args.get('limit', default=10, type=int)
+    return jsonify(anomaly_detector.get_anomaly_history(limit))
+
+# NEW: Start/Stop Detector Endpoints (Optional)
+@app.route('/api/detector/start', methods=['POST'])
+def start_detector():
+    """Manually start the anomaly detector"""
+    if anomaly_detector.start():
+        return jsonify({"status": "started", "message": "Anomaly detector started"})
+    return jsonify({"status": "error", "message": "Failed to start (no baseline?)"}), 400
+
+@app.route('/api/detector/stop', methods=['POST'])
+def stop_detector():
+    """Stop the anomaly detector"""
+    anomaly_detector.stop()
+    return jsonify({"status": "stopped", "message": "Anomaly detector stopped"})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
