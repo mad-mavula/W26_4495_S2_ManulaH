@@ -15,11 +15,6 @@ from typing import Dict, List, Optional
 # ============================================
 
 class BaselineCalculator:
-    """
-    Calculates and stores baseline metrics for normal system behavior.
-    Runs in background, collects data every hour, updates baseline file.
-    """
-    
     def __init__(self, prometheus_url: str = "http://monitoring-kube-prometheus-prometheus.monitoring:9090"):
         self.prometheus_url = prometheus_url
         self.baseline_file = "/app/data/baseline.json"
@@ -27,7 +22,6 @@ class BaselineCalculator:
         self.thread = None
         
     def query_prometheus(self, query: str) -> Optional[float]:
-        """Execute a Prometheus query and return the average value"""
         try:
             response = requests.get(
                 f"{self.prometheus_url}/api/v1/query",
@@ -45,9 +39,7 @@ class BaselineCalculator:
             return None
     
     def collect_current_metrics(self) -> Dict:
-        """Collect current metrics from Prometheus"""
         metrics = {}
-        
         queries = {
             'request_rate': 'sum(rate(http_requests_total[5m]))',
             'error_rate': 'sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100',
@@ -57,24 +49,19 @@ class BaselineCalculator:
             'memory_usage': 'sum(process_resident_memory_bytes)',
             'auth_failures': 'sum(rate(http_requests_total{status="401"}[5m]))',
         }
-        
         for name, query in queries.items():
             value = self.query_prometheus(query)
             if value is not None:
                 metrics[name] = value
             else:
                 metrics[name] = 0.0
-                
         return metrics
     
     def calculate_baseline(self, samples: List[Dict]) -> Dict:
-        """Calculate baseline statistics from collected samples"""
         if not samples:
             return {}
-        
         baseline = {}
         metrics_keys = samples[0].keys()
-        
         for key in metrics_keys:
             values = [sample[key] for sample in samples if key in sample]
             if values:
@@ -85,28 +72,22 @@ class BaselineCalculator:
                     'std_dev': (sum((x - (sum(values) / len(values))) ** 2 for x in values) / len(values)) ** 0.5 if len(values) > 1 else 0,
                     'samples': len(values)
                 }
-        
         return baseline
     
     def collect_baseline_data(self, duration_minutes: int = 60) -> List[Dict]:
-        """Collect metrics over a period of time for baseline calculation"""
         print(f"Collecting baseline data for {duration_minutes} minutes...")
         samples = []
         end_time = time.time() + (duration_minutes * 60)
-        
         while time.time() < end_time:
             metrics = self.collect_current_metrics()
             metrics['timestamp'] = time.time()
             samples.append(metrics)
             print(f"  Collected sample {len(samples)}")
             time.sleep(60)
-            
         return samples
     
     def save_baseline(self, baseline: Dict):
-        """Save baseline to file"""
         os.makedirs(os.path.dirname(self.baseline_file), exist_ok=True)
-        
         baseline_data = {
             'timestamp': time.time(),
             'baseline': baseline,
@@ -115,14 +96,11 @@ class BaselineCalculator:
                 'description': 'SRE Security Research Baseline'
             }
         }
-        
         with open(self.baseline_file, 'w') as f:
             json.dump(baseline_data, f, indent=2)
-        
         print(f"Baseline saved to {self.baseline_file}")
     
     def load_baseline(self) -> Optional[Dict]:
-        """Load baseline from file"""
         if os.path.exists(self.baseline_file):
             with open(self.baseline_file, 'r') as f:
                 data = json.load(f)
@@ -130,11 +108,9 @@ class BaselineCalculator:
         return None
     
     def get_current_deviation(self, current_metrics: Dict) -> Dict:
-        """Calculate deviation of current metrics from baseline"""
         baseline = self.load_baseline()
         if not baseline:
             return {}
-        
         deviations = {}
         for metric, value in current_metrics.items():
             if metric in baseline:
@@ -147,28 +123,19 @@ class BaselineCalculator:
                         'deviation_percent': deviation_pct,
                         'is_anomaly': abs(deviation_pct) > (b['std_dev'] * 3) if b['std_dev'] > 0 else abs(deviation_pct) > 50
                     }
-        
         return deviations
 
 # ============================================
-# ANOMALY DETECTOR CLASS
+# ANOMALY DETECTOR CLASS (UPDATED WITH CLASSIFIER)
 # ============================================
 
+from classifier import get_classifier
+
 class AnomalyDetector:
-    """
-    Continuously monitors metrics and triggers classification
-    when anomalies are detected.
-    """
-    
     def __init__(self, check_interval: int = 15):
-        """
-        Initialize the anomaly detector.
-        
-        Args:
-            check_interval: Seconds between metric checks (default: 15)
-        """
         self.check_interval = check_interval
-        self.baseline_calc = None  # Will be set later
+        self.baseline_calc = None
+        self.classifier = get_classifier()
         self.is_running = False
         self.thread = None
         self.callback = None
@@ -176,55 +143,40 @@ class AnomalyDetector:
         self.current_anomaly = None
         self.anomaly_start_time = None
         self.consecutive_anomalies = 0
-        self.anomaly_threshold = 2  # Need 2 consecutive checks to confirm
+        self.anomaly_threshold = 2
         
-        # Anomaly sensitivity thresholds (percentage deviation)
         self.sensitivity = {
-            'request_rate': 50,    # 50% deviation
-            'error_rate': 100,      # 100% deviation (2x)
-            'latency_p95': 100,     # 100% deviation
-            'latency_p99': 100,     # 100% deviation
-            'cpu_usage': 30,        # 30% deviation
-            'memory_usage': 20,      # 20% deviation
-            'auth_failures': 200     # 200% deviation (3x)
+            'request_rate': 50,
+            'error_rate': 100,
+            'latency_p95': 100,
+            'latency_p99': 100,
+            'cpu_usage': 30,
+            'memory_usage': 20,
+            'auth_failures': 200
         }
         
     def set_baseline_calculator(self, baseline_calc):
-        """Set the baseline calculator instance"""
         self.baseline_calc = baseline_calc
         
     def set_callback(self, callback_function):
-        """
-        Set the function to call when anomaly is confirmed.
-        This will be your classification engine.
-        """
         self.callback = callback_function
         
     def check_metrics(self) -> Dict:
-        """
-        Check current metrics against baseline.
-        Returns anomaly info if detected.
-        """
         if not self.baseline_calc:
             return {'anomaly_count': 0, 'anomalous_metrics': {}}
-            
         current_metrics = self.baseline_calc.collect_current_metrics()
         deviations = self.baseline_calc.get_current_deviation(current_metrics)
-        
-        # Find which metrics are anomalous based on sensitivity
         anomalous_metrics = {}
         for metric, data in deviations.items():
             if data and 'deviation_percent' in data:
                 dev_pct = abs(data['deviation_percent'])
                 sensitivity = self.sensitivity.get(metric, 50)
-                
                 if dev_pct > sensitivity:
                     anomalous_metrics[metric] = {
                         'deviation': data['deviation_percent'],
                         'current': data['current'],
                         'baseline': data['baseline_mean']
                     }
-        
         return {
             'timestamp': time.time(),
             'all_metrics': current_metrics,
@@ -234,16 +186,10 @@ class AnomalyDetector:
         }
     
     def detect_anomalies(self) -> Optional[Dict]:
-        """
-        Run one detection cycle. Returns anomaly info if confirmed.
-        """
         result = self.check_metrics()
-        
         if result['anomaly_count'] > 0:
             self.consecutive_anomalies += 1
-            
             if self.current_anomaly is None:
-                # New anomaly starting
                 self.current_anomaly = {
                     'start_time': time.time(),
                     'metrics': result['anomalous_metrics'],
@@ -251,8 +197,6 @@ class AnomalyDetector:
                     'deviations': result['deviations']
                 }
                 self.anomaly_start_time = time.time()
-            
-            # Check if anomaly is confirmed (consecutive detections)
             if self.consecutive_anomalies >= self.anomaly_threshold:
                 confirmed_anomaly = {
                     'id': f"anomaly_{int(time.time())}",
@@ -264,51 +208,39 @@ class AnomalyDetector:
                     'deviations': result['deviations'],
                     'anomaly_count': result['anomaly_count']
                 }
-                
-                # Add to history
                 self.anomaly_history.append(confirmed_anomaly)
-                
-                # Keep history manageable (last 100)
                 if len(self.anomaly_history) > 100:
                     self.anomaly_history = self.anomaly_history[-100:]
-                
                 return confirmed_anomaly
         else:
-            # No anomalies detected
             self.consecutive_anomalies = 0
             self.current_anomaly = None
             self.anomaly_start_time = None
-            
         return None
     
     def monitoring_loop(self):
-        """Main monitoring loop running in background thread"""
         print(f"🚀 Anomaly detector started (checking every {self.check_interval}s)")
-        
         while self.is_running:
             try:
                 anomaly = self.detect_anomalies()
-                
-                if anomaly and self.callback:
-                    # Trigger the classification engine
-                    print(f"⚠️ Anomaly detected! Triggering classification...")
-                    self.callback(anomaly)
-                elif anomaly:
-                    print(f"⚠️ Anomaly detected: {anomaly['anomaly_count']} metrics affected")
-                
+                if anomaly:
+                    print(f"⚠️ Anomaly detected! Classifying...")
+                    if self.classifier:
+                        classification = self.classifier.classify(anomaly)
+                        print(f"   Classification: {classification['incident_type']} - {classification.get('attack_guess','unknown')} "
+                              f"(severity {classification['severity']}, confidence {classification['confidence']}%)")
+                    elif self.callback:
+                        self.callback(anomaly)
+                    else:
+                        print(f"   No classifier or callback set. Anomaly: {anomaly['anomaly_count']} metrics")
             except Exception as e:
                 print(f"Error in anomaly detection: {e}")
-            
-            # Wait for next check
             time.sleep(self.check_interval)
     
     def start(self):
-        """Start the anomaly detector in background thread"""
         if not self.baseline_calc or not self.baseline_calc.load_baseline():
             print("❌ Cannot start anomaly detector: No baseline found!")
-            print("   Please run baseline collection first.")
             return False
-        
         self.is_running = True
         self.thread = threading.Thread(target=self.monitoring_loop)
         self.thread.daemon = True
@@ -317,14 +249,12 @@ class AnomalyDetector:
         return True
     
     def stop(self):
-        """Stop the anomaly detector"""
         self.is_running = False
         if self.thread:
             self.thread.join(timeout=5)
         print("🛑 Anomaly detector stopped")
     
     def get_status(self) -> Dict:
-        """Get current detector status"""
         return {
             'is_running': self.is_running,
             'check_interval': self.check_interval,
@@ -335,7 +265,6 @@ class AnomalyDetector:
         }
     
     def get_anomaly_history(self, limit: int = 10) -> List[Dict]:
-        """Get recent anomaly history"""
         return self.anomaly_history[-limit:] if self.anomaly_history else []
 
 # Create singleton instances
@@ -348,7 +277,6 @@ try:
     baseline = baseline_calculator.load_baseline()
     if baseline:
         print("✅ Baseline loaded successfully")
-        # Auto-start anomaly detector if baseline exists
         anomaly_detector.start()
     else:
         print("⚠️ No baseline found. Run baseline collection first")
@@ -391,11 +319,7 @@ def simulate_scenario(scenario_id):
         scenario = next((s for s in scenarios if s['id'] == scenario_id), None)
         if not scenario:
             return jsonify({"error": "Scenario not found"}), 404
-        
-        # Simulate some processing
         time.sleep(0.1)
-        
-        # Add simulation results
         result = {
             "scenario": scenario['name'],
             "type": scenario['type'],
@@ -409,14 +333,26 @@ def simulate_scenario(scenario_id):
         }
         return jsonify(result)
 
+@app.route('/api/login', methods=['POST'])
+def login():
+    """Simulate a login endpoint that always fails (401) for brute force testing."""
+    REQUEST_COUNT.labels(method='POST', endpoint='/login', status='401').inc()
+    # Optionally add a small latency measurement
+    with REQUEST_LATENCY.labels(endpoint='/login').time():
+        time.sleep(0.01)  # tiny delay to simulate processing
+    return jsonify({"error": "Invalid credentials"}), 401
+
+@app.route('/api/broken', methods=['GET'])
+def broken():
+    """Simulate a broken endpoint that always returns 500 for misconfiguration testing."""
+    REQUEST_COUNT.labels(method='GET', endpoint='/broken', status='500').inc()
+    with REQUEST_LATENCY.labels(endpoint='/broken').time():
+        time.sleep(0.02)
+    return jsonify({"error": "Internal server error"}), 500
+
 @app.route('/api/realtime-metrics/<scenario_id>', methods=['GET'])
 def realtime_metrics(scenario_id):
-    """Fetch real metrics from Prometheus for the given scenario"""
-    
-    # Prometheus service URL inside the cluster
     PROMETHEUS_URL = "http://monitoring-kube-prometheus-prometheus.monitoring:9090"
-    
-    # Define queries for each scenario
     queries = {
         "dos-attack": {
             "request_rate": 'sum(rate(http_requests_total[1m]))',
@@ -435,10 +371,8 @@ def realtime_metrics(scenario_id):
             "cpu_usage": 'sum(rate(process_cpu_seconds_total[1m]))'
         }
     }
-    
     if scenario_id not in queries:
         return jsonify({"error": "Scenario not found"}), 404
-    
     results = {}
     for metric_name, query in queries[scenario_id].items():
         try:
@@ -450,7 +384,6 @@ def realtime_metrics(scenario_id):
             if response.status_code == 200:
                 data = response.json()
                 if data['data']['result']:
-                    # Extract the value from Prometheus response
                     value = data['data']['result'][0]['value'][1]
                     results[metric_name] = float(value)
                 else:
@@ -460,15 +393,12 @@ def realtime_metrics(scenario_id):
         except Exception as e:
             print(f"Error fetching {metric_name}: {e}")
             results[metric_name] = 0
-    
-    # Add analysis based on real metrics
     risk_level = "low"
     if scenario_id in ["dos-attack", "brute-force"]:
         if results.get('request_rate', 0) > 10:
             risk_level = "high"
         elif results.get('request_rate', 0) > 5:
             risk_level = "medium"
-    
     return jsonify({
         "scenario": scenario_id,
         "type": "security" if scenario_id in ["dos-attack", "brute-force"] else "operational",
@@ -487,16 +417,12 @@ def realtime_metrics(scenario_id):
 
 @app.route('/api/status', methods=['GET'])
 def get_current_status():
-    """Get current system status with deviation from baseline"""
     current_metrics = baseline_calculator.collect_current_metrics()
     deviations = baseline_calculator.get_current_deviation(current_metrics)
-    
-    # Check if any anomaly is detected
     anomalies = {}
     for metric, data in deviations.items():
         if data.get('is_anomaly', False):
             anomalies[metric] = data
-    
     status = {
         'timestamp': time.time(),
         'has_baseline': baseline_calculator.load_baseline() is not None,
@@ -505,35 +431,36 @@ def get_current_status():
         'anomalies_detected': len(anomalies) > 0,
         'anomalies': anomalies
     }
-    
     return jsonify(status)
 
-# NEW: Anomaly Detector Status Endpoint
+# Anomaly Detector Endpoints
 @app.route('/api/detector/status', methods=['GET'])
 def detector_status():
-    """Get anomaly detector status"""
     return jsonify(anomaly_detector.get_status())
 
-# NEW: Anomaly Detector History Endpoint
 @app.route('/api/detector/history', methods=['GET'])
 def detector_history():
-    """Get anomaly history"""
     limit = request.args.get('limit', default=10, type=int)
     return jsonify(anomaly_detector.get_anomaly_history(limit))
 
-# NEW: Start/Stop Detector Endpoints (Optional)
 @app.route('/api/detector/start', methods=['POST'])
 def start_detector():
-    """Manually start the anomaly detector"""
     if anomaly_detector.start():
         return jsonify({"status": "started", "message": "Anomaly detector started"})
     return jsonify({"status": "error", "message": "Failed to start (no baseline?)"}), 400
 
 @app.route('/api/detector/stop', methods=['POST'])
 def stop_detector():
-    """Stop the anomaly detector"""
     anomaly_detector.stop()
     return jsonify({"status": "stopped", "message": "Anomaly detector stopped"})
+
+# Classifier History Endpoint
+@app.route('/api/classifier/history', methods=['GET'])
+def classifier_history():
+    if hasattr(anomaly_detector, 'classifier') and anomaly_detector.classifier:
+        limit = request.args.get('limit', default=10, type=int)
+        return jsonify(anomaly_detector.classifier.get_history(limit))
+    return jsonify({"error": "Classifier not available"}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
