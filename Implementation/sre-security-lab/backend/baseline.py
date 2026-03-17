@@ -20,7 +20,7 @@ class BaselineCalculator:
     
     def __init__(self, prometheus_url: str = "http://monitoring-kube-prometheus-prometheus.monitoring:9090"):
         self.prometheus_url = prometheus_url
-        self.baseline_file = "/app/data/baseline.json"
+        self.baseline_file = "/tmp/baseline.json"
         self.is_running = False
         self.thread = None
         
@@ -131,7 +131,8 @@ class BaselineCalculator:
         return None
     
     def get_current_deviation(self, current_metrics: Dict) -> Dict:
-        """Calculate deviation of current metrics from baseline"""
+        """Calculate deviation of current metrics from baseline.
+           For metrics with zero baseline mean, treat any positive value as a large deviation."""
         baseline = self.load_baseline()
         if not baseline:
             return {}
@@ -142,13 +143,21 @@ class BaselineCalculator:
                 b = baseline[metric]
                 if b['mean'] != 0:
                     deviation_pct = ((value - b['mean']) / b['mean']) * 100
-                    deviations[metric] = {
-                        'current': value,
-                        'baseline_mean': b['mean'],
-                        'deviation_percent': deviation_pct,
-                        'is_anomaly': abs(deviation_pct) > (b['std_dev'] * 2)  # 2 sigma threshold
-                    }
-        
+                    is_anomaly = abs(deviation_pct) > (b['std_dev'] * 2)  # 2 sigma threshold
+                else:
+                    # Zero baseline mean: any positive value is considered anomalous
+                    if value > 0:
+                        deviation_pct = 1_000_000.0  # effectively infinite deviation
+                        is_anomaly = True
+                    else:
+                        deviation_pct = 0.0
+                        is_anomaly = False
+                deviations[metric] = {
+                    'current': value,
+                    'baseline_mean': b['mean'],
+                    'deviation_percent': deviation_pct,
+                    'is_anomaly': is_anomaly
+                }
         return deviations
     
     def run_baseline_collection(self, duration_minutes: int = 60):
