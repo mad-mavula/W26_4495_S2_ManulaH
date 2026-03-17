@@ -12,6 +12,7 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional, Callable
 from baseline import get_baseline_calculator
+from classifier import get_classifier
 
 class AnomalyDetector:
     """
@@ -28,9 +29,10 @@ class AnomalyDetector:
         """
         self.check_interval = check_interval
         self.baseline_calc = get_baseline_calculator()
+        self.classifier = get_classifier()          # <-- ADDED: classifier instance
         self.is_running = False
         self.thread = None
-        self.callback = None
+        self.callback = None                         # kept for optional custom callback
         self.anomaly_history = []
         self.current_anomaly = None
         self.anomaly_start_time = None
@@ -50,8 +52,7 @@ class AnomalyDetector:
         
     def set_callback(self, callback_function: Callable):
         """
-        Set the function to call when anomaly is confirmed.
-        This will be your classification engine.
+        Set an optional callback function (alternative to using classifier).
         """
         self.callback = callback_function
         
@@ -141,12 +142,20 @@ class AnomalyDetector:
             try:
                 anomaly = self.detect_anomalies()
                 
-                if anomaly and self.callback:
-                    # Trigger the classification engine
-                    print(f"⚠️ Anomaly detected! Triggering classification...")
-                    self.callback(anomaly)
-                elif anomaly:
-                    print(f"⚠️ Anomaly detected: {anomaly['anomaly_count']} metrics affected")
+                if anomaly:
+                    # Anomaly confirmed – run classification
+                    print(f"⚠️ Anomaly detected! Classifying...")
+                    
+                    # Use classifier (primary)
+                    if self.classifier:
+                        classification = self.classifier.classify(anomaly)
+                        print(f"   Classification: {classification['incident_type']} - {classification.get('attack_guess','unknown')} "
+                              f"(severity {classification['severity']}, confidence {classification['confidence']}%)")
+                    # Fallback to callback if no classifier
+                    elif self.callback:
+                        self.callback(anomaly)
+                    else:
+                        print(f"   No classifier or callback set. Anomaly: {anomaly['anomaly_count']} metrics")
                 
             except Exception as e:
                 print(f"Error in anomaly detection: {e}")
