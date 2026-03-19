@@ -25,7 +25,6 @@ class BaselineCalculator:
         self.thread = None
         
     def query_prometheus(self, query: str) -> Optional[float]:
-        """Execute a Prometheus query and return the average value"""
         try:
             response = requests.get(
                 f"{self.prometheus_url}/api/v1/query",
@@ -35,7 +34,6 @@ class BaselineCalculator:
             if response.status_code == 200:
                 data = response.json()
                 if data['data']['result']:
-                    # Get the value from the first result
                     value = float(data['data']['result'][0]['value'][1])
                     return value
             return None
@@ -44,7 +42,6 @@ class BaselineCalculator:
             return None
     
     def collect_current_metrics(self) -> Dict:
-        """Collect current metrics from Prometheus"""
         metrics = {}
         
         # Define queries for each metric
@@ -56,6 +53,8 @@ class BaselineCalculator:
             'cpu_usage': 'sum(rate(process_cpu_seconds_total[5m]))',
             'memory_usage': 'sum(process_resident_memory_bytes)',
             'auth_failures': 'sum(rate(http_requests_total{status="401"}[5m]))',
+            # NEW: total login attempts (all POST to /login, regardless of status)
+            'login_attempts': 'sum(increase(http_requests_total{endpoint="/login", method="POST", status="total"}[1m]))',
         }
         
         for name, query in queries.items():
@@ -68,13 +67,10 @@ class BaselineCalculator:
         return metrics
     
     def calculate_baseline(self, samples: List[Dict]) -> Dict:
-        """Calculate baseline statistics from collected samples"""
         if not samples:
             return {}
-        
         baseline = {}
         metrics_keys = samples[0].keys()
-        
         for key in metrics_keys:
             values = [sample[key] for sample in samples if key in sample]
             if values:
@@ -85,29 +81,22 @@ class BaselineCalculator:
                     'std_dev': (sum((x - (sum(values) / len(values))) ** 2 for x in values) / len(values)) ** 0.5 if len(values) > 1 else 0,
                     'samples': len(values)
                 }
-        
         return baseline
     
     def collect_baseline_data(self, duration_minutes: int = 60) -> List[Dict]:
-        """Collect metrics over a period of time for baseline calculation"""
         print(f"Collecting baseline data for {duration_minutes} minutes...")
         samples = []
         end_time = time.time() + (duration_minutes * 60)
-        
         while time.time() < end_time:
             metrics = self.collect_current_metrics()
             metrics['timestamp'] = time.time()
             samples.append(metrics)
             print(f"  Collected sample {len(samples)}")
-            time.sleep(60)  # Collect every minute
-            
+            time.sleep(60)
         return samples
     
     def save_baseline(self, baseline: Dict):
-        """Save baseline to file"""
-        # Ensure directory exists
         os.makedirs(os.path.dirname(self.baseline_file), exist_ok=True)
-        
         baseline_data = {
             'timestamp': time.time(),
             'baseline': baseline,
@@ -116,14 +105,11 @@ class BaselineCalculator:
                 'description': 'SRE Security Research Baseline'
             }
         }
-        
         with open(self.baseline_file, 'w') as f:
             json.dump(baseline_data, f, indent=2)
-        
         print(f"Baseline saved to {self.baseline_file}")
     
     def load_baseline(self) -> Optional[Dict]:
-        """Load baseline from file"""
         if os.path.exists(self.baseline_file):
             with open(self.baseline_file, 'r') as f:
                 data = json.load(f)
@@ -131,12 +117,9 @@ class BaselineCalculator:
         return None
     
     def get_current_deviation(self, current_metrics: Dict) -> Dict:
-        """Calculate deviation of current metrics from baseline.
-           For metrics with zero baseline mean, treat any positive value as a large deviation."""
         baseline = self.load_baseline()
         if not baseline:
             return {}
-        
         deviations = {}
         for metric, value in current_metrics.items():
             if metric in baseline:
@@ -161,7 +144,6 @@ class BaselineCalculator:
         return deviations
     
     def run_baseline_collection(self, duration_minutes: int = 60):
-        """Main function to collect and save baseline"""
         print(f"Starting baseline collection for {duration_minutes} minutes")
         samples = self.collect_baseline_data(duration_minutes)
         baseline = self.calculate_baseline(samples)
@@ -170,13 +152,11 @@ class BaselineCalculator:
         return baseline
     
     def start_background_monitoring(self, interval_hours: int = 1):
-        """Start background thread to update baseline periodically"""
         def monitor_loop():
             while self.is_running:
                 print(f"Running scheduled baseline update (every {interval_hours} hours)")
-                self.run_baseline_collection(30)  # Collect for 30 minutes
+                self.run_baseline_collection(30)
                 time.sleep(interval_hours * 3600)
-        
         self.is_running = True
         self.thread = threading.Thread(target=monitor_loop)
         self.thread.daemon = True
@@ -184,25 +164,21 @@ class BaselineCalculator:
         print("Background baseline monitoring started")
     
     def stop_background_monitoring(self):
-        """Stop the background monitoring thread"""
         self.is_running = False
         if self.thread:
             self.thread.join()
         print("Background monitoring stopped")
 
-# Singleton instance
 _baseline_instance = None
 
 def get_baseline_calculator():
-    """Get or create the baseline calculator singleton"""
     global _baseline_instance
     if _baseline_instance is None:
         _baseline_instance = BaselineCalculator()
     return _baseline_instance
 
-# If run directly, collect baseline
 if __name__ == "__main__":
     calculator = BaselineCalculator()
     print("Starting baseline collection...")
     print("Make sure you're generating normal traffic during this period!")
-    calculator.run_baseline_collection(15)  # Collect for 15 minutes for testing
+    calculator.run_baseline_collection(15)
