@@ -1,3 +1,4 @@
+from anomaly_detector import get_anomaly_detector
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from prometheus_client import generate_latest, Counter, Histogram, REGISTRY
@@ -7,8 +8,12 @@ import numpy as np
 import requests
 import os
 import threading
+import sys
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+
+# Allow huge integers in JSON responses (for Fibonacci)
+sys.set_int_max_str_digits(1000000)
 
 # ============================================
 # BASELINE CALCULATOR CLASS
@@ -48,6 +53,8 @@ class BaselineCalculator:
             'cpu_usage': 'sum(rate(process_cpu_seconds_total[5m]))',
             'memory_usage': 'sum(process_resident_memory_bytes)',
             'auth_failures': 'sum(rate(http_requests_total{status="401"}[5m]))',
+            # NEW: total login attempts (all POST to /login, regardless of status)
+            'login_attempts': 'sum(increase(http_requests_total{endpoint="/login", method="POST", status="total"}[1m]))',
         }
         for name, query in queries.items():
             value = self.query_prometheus(query)
@@ -269,7 +276,7 @@ class AnomalyDetector:
 
 # Create singleton instances
 baseline_calculator = BaselineCalculator()
-anomaly_detector = AnomalyDetector()
+anomaly_detector = get_anomaly_detector()
 anomaly_detector.set_baseline_calculator(baseline_calculator)
 
 # Load baseline on startup
@@ -336,10 +343,12 @@ def simulate_scenario(scenario_id):
 @app.route('/api/login', methods=['POST'])
 def login():
     """Simulate a login endpoint that always fails (401) for brute force testing."""
+    # Increment total attempts (new counter with status="total")
+    REQUEST_COUNT.labels(method='POST', endpoint='/login', status='total').inc()
+    # Increment failures
     REQUEST_COUNT.labels(method='POST', endpoint='/login', status='401').inc()
-    # Optionally add a small latency measurement
     with REQUEST_LATENCY.labels(endpoint='/login').time():
-        time.sleep(0.01)  # tiny delay to simulate processing
+        time.sleep(0.01)
     return jsonify({"error": "Invalid credentials"}), 401
 
 @app.route('/api/broken', methods=['GET'])
@@ -454,7 +463,43 @@ def stop_detector():
     anomaly_detector.stop()
     return jsonify({"status": "stopped", "message": "Anomaly detector stopped"})
 
-# Classifier History Endpoint
+@app.route('/api/cpu-intensive', methods=['GET'])
+def cpu_intensive():
+    """Simulate CPU‑intensive work with a moderately large Fibonacci number."""
+    def fib(n):
+        a, b = 0, 1
+        for _ in range(n):
+            a, b = b, a + b
+        return a
+    result = fib(10000)
+    REQUEST_COUNT.labels(method='GET', endpoint='/cpu-intensive', status='200').inc()
+    with REQUEST_LATENCY.labels(endpoint='/cpu-intensive').time():
+        return jsonify({"fib": result})
+
+@app.route('/api/cpu-burn', methods=['GET'])
+def cpu_burn():
+    """Lightweight CPU burner."""
+    for _ in range(1_000_000):
+        _ = 2 ** 10
+    REQUEST_COUNT.labels(method='GET', endpoint='/cpu-burn', status='200').inc()
+    with REQUEST_LATENCY.labels(endpoint='/cpu-burn').time():
+        return jsonify({"status": "burned"})
+
+@app.route('/api/classifier/clear', methods=['POST'])
+def clear_classifier_history():
+    from classifier import get_classifier
+    classifier = get_classifier()
+    classifier.incident_history = []
+    return jsonify({"status": "cleared", "message": "Classifier history reset"})
+
+@app.route('/api/detector/clear', methods=['POST'])
+def clear_detector_history():
+    from anomaly_detector import get_anomaly_detector
+    detector = get_anomaly_detector()
+    detector.anomaly_history = []
+    detector.current_anomaly = None
+    return jsonify({"status": "cleared", "message": "Anomaly detector history reset"})
+
 @app.route('/api/classifier/history', methods=['GET'])
 def classifier_history():
     if hasattr(anomaly_detector, 'classifier') and anomaly_detector.classifier:
