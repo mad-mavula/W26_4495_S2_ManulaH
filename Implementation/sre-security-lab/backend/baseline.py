@@ -54,7 +54,7 @@ class BaselineCalculator:
             'memory_usage': 'sum(process_resident_memory_bytes)',
             'auth_failures': 'sum(rate(http_requests_total{status="401"}[5m]))',
             # NEW: total login attempts (all POST to /login, regardless of status)
-            'login_attempts': 'sum(increase(http_requests_total{endpoint="/login", method="POST", status="total"}[1m]))',
+            'login_attempts': 'sum(rate(http_requests_total{endpoint="/login", method="POST", status="total"}[1m]))',
         }
         
         for name, query in queries.items():
