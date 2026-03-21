@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   Container, Grid, Paper, Typography, 
   Card, CardContent, Button, Alert,
   Chip, Box, LinearProgress
 } from '@mui/material';
-import { getScenarios, simulateScenario } from '../services/api';
+import { getScenarios, simulateScenario, API_URL } from '../services/api';
 
 function Dashboard() {
   const [scenarios, setScenarios] = useState([]);
@@ -12,6 +13,7 @@ function Dashboard() {
   const [simulationResult, setSimulationResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [useRealMetrics, setUseRealMetrics] = useState(false);
 
   useEffect(() => {
     fetchScenarios();
@@ -30,12 +32,31 @@ function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await simulateScenario(scenarioId);
+      let response;
+      if (useRealMetrics) {
+        response = await axios.get(`${API_URL}/realtime-metrics/${scenarioId}`);
+      } else {
+        response = await simulateScenario(scenarioId);
+      }
       setSimulationResult(response.data);
     } catch (err) {
       setError('Simulation failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const clearHistory = async () => {
+    try {
+      await axios.post(`${API_URL}/classifier/clear`);
+      await axios.post(`${API_URL}/detector/clear`);
+      // Clear the displayed simulation result to reflect cleared state
+      setSimulationResult(null);
+      // Optional: show a temporary success message
+      setError(null); // clear any previous error
+    } catch (err) {
+      console.error('Failed to clear history', err);
+      setError('Failed to clear history');
     }
   };
 
@@ -50,9 +71,25 @@ function Dashboard() {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        SRE Security Research Lab
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4">SRE Security Research Lab</Typography>
+        <Box>
+          <Button 
+            variant="outlined" 
+            onClick={clearHistory} 
+            sx={{ mr: 2 }}
+          >
+            Clear History
+          </Button>
+          <Button 
+            variant={useRealMetrics ? "contained" : "outlined"}
+            color={useRealMetrics ? "primary" : "default"}
+            onClick={() => setUseRealMetrics(!useRealMetrics)}
+          >
+            {useRealMetrics ? "Using Real Metrics" : "Using Simulated Data"}
+          </Button>
+        </Box>
+      </Box>
       <Typography variant="subtitle1" color="textSecondary" gutterBottom>
         Incident Classification & Prioritization Framework
       </Typography>
