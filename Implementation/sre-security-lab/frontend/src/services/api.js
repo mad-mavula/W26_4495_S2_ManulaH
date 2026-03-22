@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_URL = '';  // Use relative URLs, rely on nginx proxy
+export const API_URL = '/api';  // Use relative URLs, rely on nginx proxy
 
 export const getScenarios = () => {
     return axios.get(`${API_URL}/scenarios`);
