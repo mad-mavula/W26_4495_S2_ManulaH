@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   Container, Grid, Paper, Typography, 
   Card, CardContent, Button, Alert,
-  Chip, Box, LinearProgress
+  Chip, Box, LinearProgress, List, ListItem, ListItemText
 } from '@mui/material';
 import { getScenarios, simulateScenario, API_URL } from '../services/api';
 
@@ -14,6 +14,25 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [useRealMetrics, setUseRealMetrics] = useState(false);
+  const [incidents, setIncidents] = useState([]);
+
+  // Fetch classifier history
+  const fetchIncidents = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/classifier/history`);
+      const data = response.data;
+      setIncidents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch incidents', err);
+    }
+  };
+
+  // Poll incidents every 5 seconds
+  useEffect(() => {
+    fetchIncidents();
+    const interval = setInterval(fetchIncidents, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetchScenarios();
@@ -22,9 +41,11 @@ function Dashboard() {
   const fetchScenarios = async () => {
     try {
       const response = await getScenarios();
-      setScenarios(response.data);
+      const data = response.data;
+      setScenarios(Array.isArray(data) ? data : []);
     } catch (err) {
       setError('Failed to fetch scenarios');
+      setScenarios([]);
     }
   };
 
@@ -50,10 +71,9 @@ function Dashboard() {
     try {
       await axios.post(`${API_URL}/classifier/clear`);
       await axios.post(`${API_URL}/detector/clear`);
-      // Clear the displayed simulation result to reflect cleared state
       setSimulationResult(null);
-      // Optional: show a temporary success message
-      setError(null); // clear any previous error
+      setError(null);
+      setIncidents([]);
     } catch (err) {
       console.error('Failed to clear history', err);
       setError('Failed to clear history');
@@ -69,16 +89,18 @@ function Dashboard() {
     }
   };
 
+  const getIncidentColor = (type) => {
+    if (type === 'security') return 'error';
+    if (type === 'operational') return 'info';
+    return 'default';
+  };
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h4">SRE Security Research Lab</Typography>
         <Box>
-          <Button 
-            variant="outlined" 
-            onClick={clearHistory} 
-            sx={{ mr: 2 }}
-          >
+          <Button variant="outlined" onClick={clearHistory} sx={{ mr: 2 }}>
             Clear History
           </Button>
           <Button 
@@ -107,7 +129,7 @@ function Dashboard() {
               Select a scenario to simulate and analyze
             </Typography>
             
-            {scenarios.map((scenario) => (
+            {Array.isArray(scenarios) && scenarios.map((scenario) => (
               <Card 
                 key={scenario.id} 
                 sx={{ 
@@ -148,8 +170,57 @@ function Dashboard() {
           </Paper>
         </Grid>
         
+        {/* Middle Column - Live Incidents */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Typography variant="h6" gutterBottom>
+              Live Incidents
+            </Typography>
+            <Typography variant="body2" color="textSecondary" paragraph>
+              Automatically updated from the classifier
+            </Typography>
+            {!Array.isArray(incidents) || incidents.length === 0 ? (
+              <Typography color="textSecondary" sx={{ textAlign: 'center', mt: 4 }}>
+                No incidents yet. Run an attack simulation.
+              </Typography>
+            ) : (
+              <List dense>
+                {incidents.slice().reverse().map((inc, idx) => (
+                  <ListItem key={idx} divider>
+                    <ListItemText
+                      primary={
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Chip 
+                            label={inc.attack_guess || inc.incident_type} 
+                            size="small"
+                            color={getIncidentColor(inc.incident_type)}
+                          />
+                          <Typography variant="caption">Severity: {inc.severity}</Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <>
+                          <Typography variant="caption" display="block">
+                            Type: {inc.incident_type}
+                          </Typography>
+                          <Typography variant="caption" display="block">
+                            Confidence: {inc.confidence}%
+                          </Typography>
+                          <Typography variant="caption" display="block">
+                            {inc.explanation?.user_impact}
+                          </Typography>
+                        </>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Paper>
+        </Grid>
+
         {/* Right Column - Simulation Results */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2, minHeight: '500px' }}>
             <Typography variant="h6" gutterBottom>
               Simulation Results
