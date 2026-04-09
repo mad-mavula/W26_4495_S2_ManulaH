@@ -7,7 +7,7 @@ metadata:
     component: backend
     research: sre-security
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: sre-backend
@@ -22,42 +22,59 @@ spec:
         prometheus.io/port: "5000"
         prometheus.io/path: "/metrics"
     spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        command: ['sh', '-c', 'chown -R 1000:1000 /app/data']
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
       containers:
-        - name: backend
-          image: sre-backend:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 5000
-              name: http
-          env:
-            - name: FLASK_ENV
-              value: "production"
-            - name: PYTHONUNBUFFERED
-              value: "1"
-          resources:
-            requests:
-              memory: "256Mi"
-              cpu: "250m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
-          livenessProbe:
-            httpGet:
-              path: /api/health
-              port: 5000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /api/health
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          volumeMounts:
-            - name: scenarios
-              mountPath: /app/scenarios
-              readOnly: true
-      volumes:
+      - name: backend
+        image: sre-backend:v50
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 5 && curl -X POST http://localhost:5000/api/detector/start || true"]
+        ports:
+        - containerPort: 5000
+          name: http
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
         - name: scenarios
-          configMap:
-            name: sre-scenarios
+          mountPath: /app/scenarios
+          readOnly: true
+        - name: data
+          mountPath: /app/data
+      volumes:
+      - name: scenarios
+        configMap:
+          name: sre-scenarios
+      - name: data
+        hostPath:
+          path: /mnt/data/sre-lab
+          type: DirectoryOrCreate
