@@ -2,18 +2,9 @@
 import requests
 import threading
 import time
-import subprocess
 
 def get_url():
-    result = subprocess.run(['minikube', 'ip'], capture_output=True, text=True)
-    minikube_ip = result.stdout.strip()
-    result = subprocess.run(
-        ['kubectl', 'get', 'service', 'sre-frontend-service',
-         '-o', 'jsonpath={.spec.ports[0].nodePort}'],
-        capture_output=True, text=True
-    )
-    port = result.stdout.strip()
-    return f"http://{minikube_ip}:{port}"
+    return "http://sre-frontend-service.default.svc.cluster.local"
 
 def worker(thread_id, duration, base_url):
     end_time = time.time() + duration
@@ -24,12 +15,12 @@ def worker(thread_id, duration, base_url):
             count += 1
         except:
             pass
-        time.sleep(0.01)
+        time.sleep(0.05)
     print(f"Thread {thread_id} finished, sent {count} requests")
 
 def main():
-    duration = 60
-    threads = 50
+    duration = 30
+    threads = 10
     base_url = get_url()
     print(f"Target: {base_url}")
     print(f"Starting brute force simulation for {duration}s with {threads} threads...")
@@ -40,7 +31,7 @@ def main():
         threads_list.append(t)
     for t in threads_list:
         t.join()
-    print("Done. Check classifier history.")
+    print("Done.")
 
 if __name__ == "__main__":
     main()
