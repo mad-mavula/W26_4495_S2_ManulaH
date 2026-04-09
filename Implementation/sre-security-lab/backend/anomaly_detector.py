@@ -29,10 +29,10 @@ class AnomalyDetector:
         """
         self.check_interval = check_interval
         self.baseline_calc = get_baseline_calculator()
-        self.classifier = get_classifier()          # <-- ADDED: classifier instance
+        self.classifier = get_classifier()
         self.is_running = False
         self.thread = None
-        self.callback = None                         # kept for optional custom callback
+        self.callback = None
         self.anomaly_history = []
         self.current_anomaly = None
         self.anomaly_start_time = None
@@ -55,6 +55,13 @@ class AnomalyDetector:
         Set an optional callback function (alternative to using classifier).
         """
         self.callback = callback_function
+
+    def set_baseline_calculator(self, calculator):
+        """
+        Set a custom baseline calculator (dependency injection).
+        Overrides the default calculator obtained from get_baseline_calculator().
+        """
+        self.baseline_calc = calculator
         
     def check_metrics(self) -> Dict:
         """
@@ -91,6 +98,8 @@ class AnomalyDetector:
         Run one detection cycle. Returns anomaly info if confirmed.
         """
         result = self.check_metrics()
+        # Debug: print auth_failures from fresh metrics
+        print(f"DEBUG check_metrics auth_failures: {result['all_metrics'].get('auth_failures')}")
         
         if result['anomaly_count'] > 0:
             self.consecutive_anomalies += 1
@@ -163,12 +172,23 @@ class AnomalyDetector:
             # Wait for next check
             time.sleep(self.check_interval)
     
+    def reset(self):
+        """Reset the detector's internal state (history, current anomaly, counters)."""
+        print("🔄 Anomaly detector reset called")
+        self.anomaly_history = []
+        self.current_anomaly = None
+        self.anomaly_start_time = None
+        self.consecutive_anomalies = 0
+    
     def start(self):
         """Start the anomaly detector in background thread"""
         if not self.baseline_calc.load_baseline():
             print("❌ Cannot start anomaly detector: No baseline found!")
             print("   Please run baseline collection first.")
             return False
+        
+        # Reset internal state to avoid carrying over old anomalies
+        self.reset()
         
         self.is_running = True
         self.thread = threading.Thread(target=self.monitoring_loop)

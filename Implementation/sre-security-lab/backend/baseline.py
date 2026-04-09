@@ -20,7 +20,7 @@ class BaselineCalculator:
     
     def __init__(self, prometheus_url: str = "http://monitoring-kube-prometheus-prometheus.monitoring:9090"):
         self.prometheus_url = prometheus_url
-        self.baseline_file = "/tmp/baseline.json"
+        self.baseline_file = "/app/data/baseline.json"   # Changed from /tmp/baseline.json
         self.is_running = False
         self.thread = None
         
@@ -44,17 +44,16 @@ class BaselineCalculator:
     def collect_current_metrics(self) -> Dict:
         metrics = {}
         
-        # Define queries for each metric
+        # Define queries for each metric – all using 30‑second windows for fast decay
         queries = {
-            'request_rate': 'sum(rate(http_requests_total[5m]))',
-            'error_rate': 'sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100',
-            'latency_p95': 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
-            'latency_p99': 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
-            'cpu_usage': 'sum(rate(process_cpu_seconds_total[5m]))',
+            'request_rate': 'sum(rate(http_requests_total[30s]))',
+            'error_rate': 'sum(rate(http_requests_total{status=~"5.."}[30s])) / sum(rate(http_requests_total[30s])) * 100',
+            'latency_p95': 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[30s])) by (le))',
+            'latency_p99': 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[30s])) by (le))',
+            'cpu_usage': 'sum(rate(process_cpu_seconds_total[30s]))',
             'memory_usage': 'sum(process_resident_memory_bytes)',
-            'auth_failures': 'sum(rate(http_requests_total{status="401"}[5m]))',
-            # NEW: total login attempts (all POST to /login, regardless of status)
-            'login_attempts': 'sum(rate(http_requests_total{endpoint="/login", method="POST", status="total"}[1m]))',
+            'auth_failures': 'sum(increase(http_requests_total{status="401"}[30s]))',   # count of 401s in last 30s
+            'login_attempts': 'sum(rate(http_requests_total{endpoint="/login", method="POST", status="total"}[30s]))',
         }
         
         for name, query in queries.items():

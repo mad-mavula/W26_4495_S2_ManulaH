@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Classification Engine for SRE Security Research
-Implements detection for DDoS, brute force, and configuration errors.
+Severity based on attack intensity and user impact.
+Only non-normal incidents are stored in history (no limit).
 """
 
 import time
@@ -12,60 +13,40 @@ class ClassificationEngine:
         self.incident_history = []
 
     def classify(self, anomaly: Dict) -> Dict:
-        metrics = anomaly.get('metrics', {})          # anomalous metrics with deviations
-        all_metrics = anomaly.get('all_metrics', {})  # all current metrics
-        deviations = anomaly.get('deviations', {})    # all deviations
+        metrics = anomaly.get('metrics', {})
+        all_metrics = anomaly.get('all_metrics', {})
+        deviations = anomaly.get('deviations', {})
 
-        # Default values (no incident)
         incident_type = "normal"
         attack_guess = None
-        severity = "P3"
         confidence = 0
         triggered_rules = []
         user_impact = ""
 
-        # Helper to get deviation safely
         def dev(metric):
             return metrics.get(metric, {}).get('deviation', 0)
 
-        # ------------------------------------------------------------------
-        # Brute force detection (simplified – triggers on high auth_failures)
-        # ------------------------------------------------------------------
+        # ----- Detection (unchanged) -----
         auth_failures = all_metrics.get('auth_failures', 0)
-        if auth_failures > 10:
+        if auth_failures > 5:
             incident_type = "security"
             attack_guess = "bruteforce"
             confidence = 85
             triggered_rules.append("Rule4: High authentication failures")
 
-        # ------------------------------------------------------------------
-        # DDoS detection rules (only if not already classified as brute‑force)
-        # ------------------------------------------------------------------
         if incident_type == "normal":
-            # Helper to check if auth failures are high
             def auth_is_high():
-                current_auth = all_metrics.get('auth_failures', 0)
-                if current_auth > 10:
-                    return True
-                if 'auth_failures' in metrics and dev('auth_failures') > 200:
-                    return True
-                return False
+                return all_metrics.get('auth_failures', 0) > 10 or ('auth_failures' in metrics and dev('auth_failures') > 200)
 
-            # Only consider DDoS if auth failures are NOT high
             if not auth_is_high():
-                # Rule 1: Resource saturation (traffic + CPU/memory)
                 if 'request_rate' in metrics:
                     req_dev = dev('request_rate')
-                    cpu_dev = dev('cpu_usage')
-                    mem_dev = dev('memory_usage')
-
-                    if req_dev > 50 and (cpu_dev > 50 or mem_dev > 15):
+                    if req_dev > 50 and (dev('cpu_usage') > 50 or dev('memory_usage') > 15):
                         incident_type = "security"
                         attack_guess = "ddos"
                         confidence = 90
-                        triggered_rules.append("Rule1: Resource saturation (traffic + CPU/memory)")
+                        triggered_rules.append("Rule1: Resource saturation")
 
-                # Rule 2: User impact (traffic + latency)
                 if incident_type == "normal" and 'request_rate' in metrics:
                     req_dev = dev('request_rate')
                     lat_dev = max(dev('latency_p95'), dev('latency_p99'))
@@ -73,9 +54,8 @@ class ClassificationEngine:
                         incident_type = "security"
                         attack_guess = "ddos"
                         confidence = 80
-                        triggered_rules.append("Rule2: User impact (traffic + latency)")
+                        triggered_rules.append("Rule2: User impact (latency)")
 
-                # Rule 3: Service failure (traffic + error rate)
                 if incident_type == "normal" and 'request_rate' in metrics and 'error_rate' in metrics:
                     req_dev = dev('request_rate')
                     err_dev = dev('error_rate')
@@ -84,11 +64,8 @@ class ClassificationEngine:
                         incident_type = "security"
                         attack_guess = "ddos"
                         confidence = 75
-                        triggered_rules.append("Rule3: Service failure (traffic + error rate)")
+                        triggered_rules.append("Rule3: Service failure (errors)")
 
-        # ------------------------------------------------------------------
-        # Configuration error
-        # ------------------------------------------------------------------
         if incident_type == "normal" and 'error_rate' in metrics:
             err_dev = dev('error_rate')
             cpu_anomaly = 'cpu_usage' in metrics and abs(dev('cpu_usage')) > 30
@@ -96,29 +73,52 @@ class ClassificationEngine:
                 incident_type = "operational"
                 attack_guess = "misconfig"
                 confidence = 70
-                triggered_rules.append("Rule5: Error rate spike without CPU saturation")
+                triggered_rules.append("Rule5: Error spike without CPU saturation")
 
-        # ------------------------------------------------------------------
-        # Severity based on error budget impact
-        # ------------------------------------------------------------------
-        if incident_type != "normal":
-            err_rate = all_metrics.get('error_rate', 0)
+        # ----- Severity based on attack type and intensity -----
+        severity = "P3"
+        err_rate = all_metrics.get('error_rate', 0)
+        req_rate = all_metrics.get('request_rate', 0)
+        baseline_req = deviations.get('request_rate', {}).get('baseline_mean', 1)
+        req_factor = req_rate / baseline_req if baseline_req > 0 else 1
+        cpu_usage = all_metrics.get('cpu_usage', 0)
+        baseline_cpu = deviations.get('cpu_usage', {}).get('baseline_mean', 0.01)
+        cpu_factor = cpu_usage / baseline_cpu if baseline_cpu > 0 else 1
+
+        if attack_guess == "ddos":
+            if req_factor > 20 or cpu_factor > 5 or err_rate > 5:
+                severity = "P1"
+                user_impact = "Critical: Extreme DDoS causing severe degradation or service unavailability."
+            elif req_factor > 10 or cpu_factor > 3 or err_rate > 1:
+                severity = "P2"
+                user_impact = "High: Significant DDoS impact – degraded performance."
+            else:
+                severity = "P3"
+                user_impact = "Medium: DDoS detected but limited user impact."
+
+        elif attack_guess == "bruteforce":
+            if auth_failures > 100 or err_rate > 5:
+                severity = "P1"
+                user_impact = "Critical: Massive brute force attack causing system strain."
+            else:
+                severity = "P2"
+                user_impact = "High: Brute force attack detected – potential account takeover risk."
+
+        elif attack_guess == "misconfig":
             if err_rate > 5:
                 severity = "P1"
-                user_impact = "Critical: High error rate, service may be unavailable."
+                user_impact = "Critical: Configuration error causing major outage."
             elif err_rate > 1:
                 severity = "P2"
-                user_impact = "High: Significant errors, degraded user experience."
+                user_impact = "High: Configuration error causing significant errors."
             else:
-                if attack_guess == "bruteforce":
-                    user_impact = "Multiple failed authentication attempts – potential account takeover."
-                    severity = "P2"
-                elif attack_guess == "misconfig":
-                    user_impact = "Configuration error causing service degradation."
-                    severity = "P3"
-                else:
-                    user_impact = "Medium: Increased traffic causing resource strain."
-                    severity = "P3"
+                severity = "P3"
+                user_impact = "Medium: Configuration error causing service degradation."
+
+        else:
+            # Normal or unknown
+            severity = "P3"
+            user_impact = "Low: Anomaly detected but no significant user impact."
 
         result = {
             'incident_id': anomaly.get('id'),
@@ -135,13 +135,16 @@ class ClassificationEngine:
             }
         }
 
-        self.incident_history.append(result)
-        if len(self.incident_history) > 100:
-            self.incident_history = self.incident_history[-100:]
+        # Only store non-normal incidents (security or operational) – no limit
+        if incident_type != "normal":
+            self.incident_history.append(result)
 
         return result
 
     def get_history(self, limit: int = 10) -> List[Dict]:
+        # Return last 'limit' incidents (or all if limit is very large)
+        if limit >= len(self.incident_history):
+            return self.incident_history
         return self.incident_history[-limit:]
 
 _classifier_instance = None

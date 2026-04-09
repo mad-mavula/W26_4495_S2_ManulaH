@@ -9,10 +9,12 @@ import requests
 import os
 import threading
 import sys
+import subprocess
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+from baseline import get_baseline_calculator
+from classifier import get_classifier
 
-# Allow huge integers in JSON responses (for Fibonacci)
 sys.set_int_max_str_digits(1000000)
 
 # ============================================
@@ -53,7 +55,6 @@ class BaselineCalculator:
             'cpu_usage': 'sum(rate(process_cpu_seconds_total[5m]))',
             'memory_usage': 'sum(process_resident_memory_bytes)',
             'auth_failures': 'sum(rate(http_requests_total{status="401"}[5m]))',
-            # NEW: total login attempts (all POST to /login, regardless of status)
             'login_attempts': 'sum(increase(http_requests_total{endpoint="/login", method="POST", status="total"}[1m]))',
         }
         for name, query in queries.items():
@@ -133,10 +134,8 @@ class BaselineCalculator:
         return deviations
 
 # ============================================
-# ANOMALY DETECTOR CLASS (UPDATED WITH CLASSIFIER)
+# ANOMALY DETECTOR CLASS
 # ============================================
-
-from classifier import get_classifier
 
 class AnomalyDetector:
     def __init__(self, check_interval: int = 15):
@@ -275,7 +274,7 @@ class AnomalyDetector:
         return self.anomaly_history[-limit:] if self.anomaly_history else []
 
 # Create singleton instances
-baseline_calculator = BaselineCalculator()
+baseline_calculator = get_baseline_calculator()
 anomaly_detector = get_anomaly_detector()
 anomaly_detector.set_baseline_calculator(baseline_calculator)
 
@@ -293,14 +292,113 @@ except Exception as e:
 app = Flask(__name__)
 CORS(app)
 
-# Prometheus metrics
 REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP Requests', ['method', 'endpoint', 'status'])
 REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request latency', ['endpoint'])
 
-# Load scenarios
 with open('scenarios/scenarios.json', 'r') as f:
     scenarios = json.load(f)
 
+# ============================================
+# ATTACK HISTORY MANAGEMENT
+# ============================================
+ATTACK_HISTORY_FILE = "/app/data/attack_history.json"
+
+def load_attack_history():
+    if os.path.exists(ATTACK_HISTORY_FILE):
+        with open(ATTACK_HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_attack_history(history):
+    os.makedirs(os.path.dirname(ATTACK_HISTORY_FILE), exist_ok=True)
+    with open(ATTACK_HISTORY_FILE, 'w') as f:
+        json.dump(history[-10:], f, indent=2)
+
+def add_attack_entry(attack_id, attack_type, start_time):
+    history = load_attack_history()
+    history.append({
+        'attack_id': attack_id,
+        'timestamp': start_time,
+        'attack_type': attack_type,
+        'classification': 'pending',
+        'severity': 'unknown'
+    })
+    save_attack_history(history)
+
+def update_attack_entry(attack_id, classification, severity):
+    history = load_attack_history()
+    for entry in history:
+        if entry.get('attack_id') == attack_id:
+            entry['classification'] = classification
+            entry['severity'] = severity
+            save_attack_history(history)
+            break
+
+def monitor_attack_result(attack_id, attack_type, start_time):
+    """Background thread: wait for classifier to produce a non-normal incident."""
+    time.sleep(8)  # increased delay to let Live Incidents appear first
+    classifier = get_classifier()
+    latest = classifier.get_history(20)
+    # Find the first incident that matches attack_type and is NOT 'normal'
+    for inc in latest:
+        if inc.get('attack_guess') == attack_type and inc.get('incident_type') != 'normal':
+            classification = inc.get('attack_guess', attack_type)
+            severity = inc.get('severity', 'P3')
+            update_attack_entry(attack_id, classification, severity)
+            return
+    # If no non-normal incident found, leave the entry as "pending"
+    # (no update – it will stay as 'pending' in attack history)
+
+def run_attack_with_history(attack_type, script_name):
+    start_time = time.time()
+    attack_id = f"{attack_type}_{int(start_time)}"
+    add_attack_entry(attack_id, attack_type, start_time)
+    success, msg = run_attack_script(script_name)
+    threading.Thread(target=monitor_attack_result, args=(attack_id, attack_type, start_time)).start()
+    return success, msg
+
+# ============================================
+# ATTACK RUNNER ENDPOINTS
+# ============================================
+def run_attack_script(script_name):
+    script_path = f"/app/scripts/{script_name}"
+    try:
+        subprocess.Popen(["python", script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return True, f"Attack {script_name} started"
+    except Exception as e:
+        return False, str(e)
+
+@app.route('/api/run-attack/bruteforce', methods=['POST'])
+def run_bruteforce():
+    success, msg = run_attack_with_history('bruteforce', 'bruteforce_simulator.py')
+    return jsonify({"status": "success" if success else "error", "message": msg})
+
+@app.route('/api/run-attack/ddos', methods=['POST'])
+def run_ddos():
+    success, msg = run_attack_with_history('ddos', 'ddos_simulator.py')
+    return jsonify({"status": "success" if success else "error", "message": msg})
+
+@app.route('/api/run-attack/misconfig', methods=['POST'])
+def run_misconfig():
+    success, msg = run_attack_script("misconfig_simulator.py")
+    return jsonify({"status": "success" if success else "error", "message": msg})
+
+# ============================================
+# ATTACK HISTORY ENDPOINTS
+# ============================================
+@app.route('/api/attack-history', methods=['GET'])
+def get_attack_history():
+    history = load_attack_history()
+    return jsonify(list(reversed(history)))
+
+@app.route('/api/attack-history/clear', methods=['DELETE'])
+def clear_attack_history():
+    save_attack_history([])
+    return jsonify({"status": "cleared"})
+
+# ============================================
+# EXISTING ENDPOINTS (unchanged)
+# ============================================
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({"status": "healthy", "timestamp": time.time()})
@@ -342,10 +440,7 @@ def simulate_scenario(scenario_id):
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    """Simulate a login endpoint that always fails (401) for brute force testing."""
-    # Increment total attempts (new counter with status="total")
     REQUEST_COUNT.labels(method='POST', endpoint='/login', status='total').inc()
-    # Increment failures
     REQUEST_COUNT.labels(method='POST', endpoint='/login', status='401').inc()
     with REQUEST_LATENCY.labels(endpoint='/login').time():
         time.sleep(0.01)
@@ -353,7 +448,6 @@ def login():
 
 @app.route('/api/broken', methods=['GET'])
 def broken():
-    """Simulate a broken endpoint that always returns 500 for misconfiguration testing."""
     REQUEST_COUNT.labels(method='GET', endpoint='/broken', status='500').inc()
     with REQUEST_LATENCY.labels(endpoint='/broken').time():
         time.sleep(0.02)
@@ -385,11 +479,7 @@ def realtime_metrics(scenario_id):
     results = {}
     for metric_name, query in queries[scenario_id].items():
         try:
-            response = requests.get(
-                f"{PROMETHEUS_URL}/api/v1/query",
-                params={"query": query},
-                timeout=5
-            )
+            response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={"query": query}, timeout=5)
             if response.status_code == 200:
                 data = response.json()
                 if data['data']['result']:
@@ -442,7 +532,6 @@ def get_current_status():
     }
     return jsonify(status)
 
-# Anomaly Detector Endpoints
 @app.route('/api/detector/status', methods=['GET'])
 def detector_status():
     return jsonify(anomaly_detector.get_status())
@@ -465,7 +554,6 @@ def stop_detector():
 
 @app.route('/api/cpu-intensive', methods=['GET'])
 def cpu_intensive():
-    """Simulate CPU‑intensive work with a moderately large Fibonacci number."""
     def fib(n):
         a, b = 0, 1
         for _ in range(n):
@@ -478,7 +566,6 @@ def cpu_intensive():
 
 @app.route('/api/cpu-burn', methods=['GET'])
 def cpu_burn():
-    """Lightweight CPU burner."""
     for _ in range(1_000_000):
         _ = 2 ** 10
     REQUEST_COUNT.labels(method='GET', endpoint='/cpu-burn', status='200').inc()
@@ -487,14 +574,12 @@ def cpu_burn():
 
 @app.route('/api/classifier/clear', methods=['POST'])
 def clear_classifier_history():
-    from classifier import get_classifier
     classifier = get_classifier()
     classifier.incident_history = []
     return jsonify({"status": "cleared", "message": "Classifier history reset"})
 
 @app.route('/api/detector/clear', methods=['POST'])
 def clear_detector_history():
-    from anomaly_detector import get_anomaly_detector
     detector = get_anomaly_detector()
     detector.anomaly_history = []
     detector.current_anomaly = None
@@ -506,6 +591,36 @@ def classifier_history():
         limit = request.args.get('limit', default=10, type=int)
         return jsonify(anomaly_detector.classifier.get_history(limit))
     return jsonify({"error": "Classifier not available"}), 404
+
+@app.route('/api/metrics-history/<metric_name>', methods=['GET'])
+def metrics_history(metric_name):
+    PROMETHEUS_URL = "http://monitoring-kube-prometheus-prometheus.monitoring:9090"
+    queries = {
+        'request_rate': 'sum(rate(http_requests_total[1m]))',
+        'auth_failures': 'sum(rate(http_requests_total{status="401"}[1m]))',
+        'latency_p95': 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le))',
+        'cpu_usage': 'sum(rate(process_cpu_seconds_total[1m]))',
+        'memory_usage': 'process_resident_memory_bytes / 1024 / 1024',
+    }
+    if metric_name not in queries:
+        return jsonify({"error": "Unknown metric"}), 400
+    
+    query = queries[metric_name]
+    end = time.time()
+    start = end - 15*60
+    params = {"query": query, "start": start, "end": end, "step": "15s"}
+    try:
+        response = requests.get(f"{PROMETHEUS_URL}/api/v1/query_range", params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            result = data.get('data', {}).get('result', [])
+            if result:
+                values = result[0].get('values', [])
+                return jsonify({"metric": metric_name, "values": values})
+        return jsonify({"metric": metric_name, "values": []})
+    except Exception as e:
+        print(f"Error fetching {metric_name} history: {e}")
+        return jsonify({"metric": metric_name, "values": []})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
