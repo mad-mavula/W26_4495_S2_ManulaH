@@ -2,90 +2,124 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Container, Grid, Paper, Typography, 
-  Card, CardContent, Button, Alert,
-  Chip, Box, LinearProgress, List, ListItem, ListItemText
+  Button, Alert, Chip, Box, LinearProgress
 } from '@mui/material';
-import { getScenarios, simulateScenario, API_URL } from '../services/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { API_URL } from '../services/api';
 
 function Dashboard() {
-  const [scenarios, setScenarios] = useState([]);
-  const [selectedScenario, setSelectedScenario] = useState(null);
-  const [simulationResult, setSimulationResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [useRealMetrics, setUseRealMetrics] = useState(false);
   const [incidents, setIncidents] = useState([]);
+  const [error, setError] = useState(null);
+  const [metrics, setMetrics] = useState({
+    request_rate: [],
+    auth_failures: [],
+    latency_p95: [],
+    cpu_usage: [],
+    memory_usage: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [attackLoading, setAttackLoading] = useState(false);
 
-  // Fetch classifier history
+  // Fetch classifier history and merge with existing incidents (never lose incidents)
   const fetchIncidents = async () => {
     try {
-      const response = await axios.get(`${API_URL}/classifier/history`);
+      const response = await axios.get(`${API_URL}/classifier/history?limit=500`);
       const data = response.data;
-      setIncidents(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        // Merge new incidents with existing ones, avoid duplicates by incident_id
+        setIncidents(prev => {
+          const combined = [...prev, ...data];
+          const unique = combined.filter((inc, index, self) =>
+            index === self.findIndex(i => i.incident_id === inc.incident_id)
+          );
+          // Sort by timestamp descending (newest first for display)
+          unique.sort((a, b) => b.timestamp - a.timestamp);
+          // Keep only last 500 to avoid memory bloat
+          return unique.slice(0, 500);
+        });
+      } else {
+        console.warn('Backend returned non-array data:', data);
+      }
     } catch (err) {
       console.error('Failed to fetch incidents', err);
+      // Do not clear incidents on error – keep existing
     }
   };
 
-  // Poll incidents every 5 seconds
+  // Fetch metric history for a given metric name
+  const fetchMetricHistory = async (metricName) => {
+    try {
+      const response = await axios.get(`${API_URL}/metrics-history/${metricName}`);
+      const data = response.data;
+      if (data.values && Array.isArray(data.values)) {
+        const formatted = data.values.map(([ts, val]) => ({
+          time: new Date(ts * 1000).toLocaleTimeString(),
+          value: parseFloat(val)
+        }));
+        setMetrics(prev => ({ ...prev, [metricName]: formatted }));
+      }
+    } catch (err) {
+      console.error(`Failed to fetch ${metricName} history`, err);
+    }
+  };
+
+  // Fetch all metrics
+  const fetchAllMetrics = async () => {
+    const metricNames = ['request_rate', 'auth_failures', 'latency_p95', 'cpu_usage', 'memory_usage'];
+    await Promise.all(metricNames.map(fetchMetricHistory));
+    setLoading(false);
+  };
+
+  // Poll incidents and metrics every 2 seconds
   useEffect(() => {
     fetchIncidents();
-    const interval = setInterval(fetchIncidents, 5000);
+    fetchAllMetrics();
+    const interval = setInterval(() => {
+      fetchIncidents();
+      fetchAllMetrics();
+    }, 2000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    fetchScenarios();
-  }, []);
-
-  const fetchScenarios = async () => {
-    try {
-      const response = await getScenarios();
-      const data = response.data;
-      setScenarios(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError('Failed to fetch scenarios');
-      setScenarios([]);
-    }
-  };
-
-  const handleSimulate = async (scenarioId) => {
-    setLoading(true);
-    setError(null);
-    try {
-      let response;
-      if (useRealMetrics) {
-        response = await axios.get(`${API_URL}/realtime-metrics/${scenarioId}`);
-      } else {
-        response = await simulateScenario(scenarioId);
-      }
-      setSimulationResult(response.data);
-    } catch (err) {
-      setError('Simulation failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearHistory = async () => {
+  const clearClassifierHistory = async () => {
     try {
       await axios.post(`${API_URL}/classifier/clear`);
       await axios.post(`${API_URL}/detector/clear`);
-      setSimulationResult(null);
+      setIncidents([]);  // Clear only when user clicks the button
       setError(null);
-      setIncidents([]);
     } catch (err) {
-      console.error('Failed to clear history', err);
-      setError('Failed to clear history');
+      console.error('Failed to clear classifier history', err);
+      setError('Failed to clear classifier history');
     }
   };
 
-  const getSeverityColor = (riskLevel) => {
-    switch(riskLevel) {
-      case 'high': return 'error';
-      case 'medium': return 'warning';
-      case 'low': return 'success';
-      default: return 'info';
+  const resetDetector = async () => {
+    try {
+      await axios.post(`${API_URL}/detector/stop`);
+      await axios.post(`${API_URL}/detector/start`);
+      await axios.post(`${API_URL}/classifier/clear`);
+      setIncidents([]);  // Clear on reset as well
+      setError(null);
+    } catch (err) {
+      console.error('Failed to reset detector', err);
+      setError('Failed to reset detector');
+    }
+  };
+
+  const runAttack = async (attackType) => {
+    setAttackLoading(true);
+    try {
+      const response = await axios.post(`${API_URL}/run-attack/${attackType}`);
+      if (response.data.status === 'success') {
+        console.log(`Attack ${attackType} started`);
+      } else {
+        setError(`Failed to start ${attackType} attack: ${response.data.message}`);
+      }
+    } catch (err) {
+      console.error(`Failed to run ${attackType} attack`, err);
+      setError(`Failed to run ${attackType} attack`);
+    } finally {
+      setAttackLoading(false);
     }
   };
 
@@ -95,187 +129,89 @@ function Dashboard() {
     return 'default';
   };
 
+  const MetricChart = ({ title, dataKey, color, unit }) => (
+    <Paper sx={{ p: 2, mb: 2 }}>
+      <Typography variant="h6" gutterBottom>{title}</Typography>
+      {loading ? (
+        <LinearProgress />
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={metrics[dataKey]}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+            <YAxis unit={unit} />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="value" stroke={color} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </Paper>
+  );
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h4">SRE Security Research Lab</Typography>
         <Box>
-          <Button variant="outlined" onClick={clearHistory} sx={{ mr: 2 }}>
-            Clear History
+          <Button variant="contained" color="secondary" onClick={() => runAttack('bruteforce')} disabled={attackLoading} sx={{ mr: 1 }}>
+            Run Brute Force
           </Button>
-          <Button 
-            variant={useRealMetrics ? "contained" : "outlined"}
-            color={useRealMetrics ? "primary" : "default"}
-            onClick={() => setUseRealMetrics(!useRealMetrics)}
-          >
-            {useRealMetrics ? "Using Real Metrics" : "Using Simulated Data"}
+          <Button variant="contained" color="primary" onClick={() => runAttack('ddos')} disabled={attackLoading} sx={{ mr: 1 }}>
+            Run DDoS
+          </Button>
+          <Button variant="outlined" onClick={resetDetector} sx={{ mr: 1 }}>
+            Reset Detector
+          </Button>
+          <Button variant="outlined" onClick={clearClassifierHistory}>
+            Clear Live Incidents
           </Button>
         </Box>
       </Box>
       <Typography variant="subtitle1" color="textSecondary" gutterBottom>
-        Incident Classification & Prioritization Framework
+        Live Metrics & Incident Classification
       </Typography>
       
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       
       <Grid container spacing={3}>
-        {/* Left Column - Scenarios List */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Incident Scenarios
-            </Typography>
-            <Typography variant="body2" color="textSecondary" paragraph>
-              Select a scenario to simulate and analyze
-            </Typography>
-            
-            {Array.isArray(scenarios) && scenarios.map((scenario) => (
-              <Card 
-                key={scenario.id} 
-                sx={{ 
-                  mb: 2, 
-                  bgcolor: selectedScenario === scenario.id ? '#e3f2fd' : 'white',
-                  border: selectedScenario === scenario.id ? '2px solid #1976d2' : 'none'
-                }}
-              >
-                <CardContent>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="subtitle1">
-                      {scenario.name}
-                    </Typography>
-                    <Chip 
-                      label={scenario.type} 
-                      size="small"
-                      color={scenario.type === 'security' ? 'error' : 'info'}
-                    />
-                  </Box>
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                    {scenario.description}
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    size="small"
-                    sx={{ mt: 2 }}
-                    onClick={() => {
-                      setSelectedScenario(scenario.id);
-                      handleSimulate(scenario.id);
-                    }}
-                    disabled={loading}
-                  >
-                    Simulate
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </Paper>
+        <Grid item xs={12} md={8}>
+          <MetricChart title="Request Rate (req/sec)" dataKey="request_rate" color="#8884d8" unit=" req/s" />
+          <MetricChart title="Authentication Failures (401/sec)" dataKey="auth_failures" color="#ff7300" unit=" /s" />
+          <MetricChart title="Latency p95 (seconds)" dataKey="latency_p95" color="#82ca9d" unit=" s" />
+          <MetricChart title="CPU Usage (cores)" dataKey="cpu_usage" color="#ffc658" unit=" cores" />
+          <MetricChart title="Memory Usage (MB)" dataKey="memory_usage" color="#d62728" unit=" MB" />
         </Grid>
         
-        {/* Middle Column - Live Incidents */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
+          <Paper sx={{ p: 2, mb: 2 }}>
             <Typography variant="h6" gutterBottom>
               Live Incidents
             </Typography>
             <Typography variant="body2" color="textSecondary" paragraph>
               Automatically updated from the classifier
             </Typography>
-            {!Array.isArray(incidents) || incidents.length === 0 ? (
+            {incidents.length === 0 ? (
               <Typography color="textSecondary" sx={{ textAlign: 'center', mt: 4 }}>
                 No incidents yet. Run an attack simulation.
               </Typography>
             ) : (
-              <List dense>
-                {incidents.slice().reverse().map((inc, idx) => (
-                  <ListItem key={idx} divider>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Chip 
-                            label={inc.attack_guess || inc.incident_type} 
-                            size="small"
-                            color={getIncidentColor(inc.incident_type)}
-                          />
-                          <Typography variant="caption">Severity: {inc.severity}</Typography>
-                        </Box>
-                      }
-                      secondary={
-                        <>
-                          <Typography variant="caption" display="block">
-                            Type: {inc.incident_type}
-                          </Typography>
-                          <Typography variant="caption" display="block">
-                            Confidence: {inc.confidence}%
-                          </Typography>
-                          <Typography variant="caption" display="block">
-                            {inc.explanation?.user_impact}
-                          </Typography>
-                        </>
-                      }
-                    />
-                  </ListItem>
+              <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                {incidents.map((inc, idx) => (
+                  <Paper key={idx} sx={{ p: 1, mb: 1, borderLeft: 4, borderColor: getIncidentColor(inc.incident_type) }}>
+                    <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                      <Chip label={inc.attack_guess || inc.incident_type} size="small" color={getIncidentColor(inc.incident_type)} />
+                      {inc.incident_type !== 'normal' && (
+                        <Typography variant="caption">Severity: {inc.severity}</Typography>
+                      )}
+                      <Typography variant="caption">Confidence: {inc.confidence}%</Typography>
+                    </Box>
+                    <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                      {inc.explanation?.user_impact}
+                    </Typography>
+                  </Paper>
                 ))}
-              </List>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* Right Column - Simulation Results */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, minHeight: '500px' }}>
-            <Typography variant="h6" gutterBottom>
-              Simulation Results
-            </Typography>
-            
-            {loading && <LinearProgress sx={{ my: 2 }} />}
-            
-            {simulationResult ? (
-              <Box>
-                <Box display="flex" gap={1} mb={2}>
-                  <Chip 
-                    label={`Type: ${simulationResult.type}`}
-                    color={simulationResult.type === 'security' ? 'error' : 'info'}
-                  />
-                  <Chip 
-                    label={`Risk: ${simulationResult.analysis.risk_level}`}
-                    color={getSeverityColor(simulationResult.analysis.risk_level)}
-                  />
-                </Box>
-                
-                <Typography variant="subtitle2" gutterBottom>
-                  Metrics Detected:
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                  <pre style={{ margin: 0, overflow: 'auto' }}>
-                    {JSON.stringify(simulationResult.metrics, null, 2)}
-                  </pre>
-                </Paper>
-                
-                <Typography variant="subtitle2" gutterBottom>
-                  Recommendations:
-                </Typography>
-                <ul>
-                  {simulationResult.analysis.recommendations.map((rec, index) => (
-                    <li key={index}>
-                      <Typography variant="body2">{rec}</Typography>
-                    </li>
-                  ))}
-                </ul>
-                
-                <Typography variant="caption" color="textSecondary">
-                  Simulation ID: {simulationResult.simulation_id}
-                </Typography>
-              </Box>
-            ) : (
-              <Box 
-                display="flex" 
-                justifyContent="center" 
-                alignItems="center" 
-                minHeight="300px"
-              >
-                <Typography color="textSecondary">
-                  Select a scenario from the left to begin simulation
-                </Typography>
-              </Box>
+              </div>
             )}
           </Paper>
         </Grid>
